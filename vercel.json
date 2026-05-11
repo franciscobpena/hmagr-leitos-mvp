@@ -5,6 +5,8 @@
     { "src": "agenda/**", "use": "@vercel/static" }
   ],
   "routes": [
+    { "src": "/", "headers": { "cache-control": "no-store, no-cache, must-revalidate, max-age=0" }, "dest": "/index.html" },
+    { "src": "/(.*\\.html)", "headers": { "cache-control": "no-store, no-cache, must-revalidate, max-age=0" }, "dest": "/$1" },
     { "src": "/(.*)", "dest": "/$1" }
   ]
 }

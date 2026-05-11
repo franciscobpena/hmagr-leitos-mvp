@@ -5,6 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0B1A33">
 <title>Sistema Lean + IA · HMAGR</title>
+<!-- [Fix 2026-05-11] Cache-busting padrão: detecta nova versão via polling e mostra banner pra refresh.
+     Resolve caso aba aberta antes de deploy (JS antigo em runtime). Combina com Cache-Control no-store em vercel.json. -->
+<script>
+(function() {
+  const POLL_MS = 10 * 60 * 1000;
+  let _initialHash = null;
+  function _hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return h; }
+  async function _check() {
+    try {
+      const r = await fetch(location.pathname, { cache: 'no-store' });
+      if (!r.ok) return;
+      const t = await r.text();
+      const h = _hash(t);
+      if (_initialHash === null) { _initialHash = h; return; }
+      if (h !== _initialHash) _showBanner();
+    } catch (e) {}
+  }
+  function _showBanner() {
+    if (document.getElementById('update-banner')) return;
+    const b = document.createElement('div');
+    b.id = 'update-banner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#14b8a6;color:#fff;padding:12px 16px;text-align:center;z-index:999999;font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);font-weight:600;font-family:DM Sans,system-ui,sans-serif';
+    b.innerHTML = 'Nova versão disponível. <u>Clique aqui para recarregar.</u>';
+    b.onclick = () => location.reload();
+    document.body.appendChild(b);
+  }
+  function _start() { _check(); setInterval(_check, POLL_MS); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _start);
+  else _start();
+})();
+</script>
 <meta name="description" content="Sistema Lean + IA · HMAGR — gestão de leitos, plano de ação, projetos Kaizen e indicadores executivos.">
 <meta property="og:title" content="Sistema Lean + IA · HMAGR">
 <meta property="og:description" content="Gestão de leitos, plano de ação, projetos Kaizen e indicadores executivos.">
@@ -15327,9 +15358,16 @@ const KaizenAPI = (function() {
     return SB_URL + '/rest/v1/' + table + (query ? '?' + query : '');
   }
 
-  async function _fetch(url, opts = {}) {
+  async function _fetch(url, opts = {}, _retryAfterAuth = false) {
     const headers = { ...SB_H, 'X-HMSA-Token': HMSA_TOKEN, ...(opts.headers || {}) };
     const res = await fetch(url, { ...opts, headers });
+    // [Fix 2026-05-11] 401 = RLS rejeitou (token vazio/invalido). Prompta UMA vez e re-tenta.
+    // Caso recorrente quando localStorage zerado (incognito, browser novo, clone novo).
+    // Guard `_retryAfterAuth` evita loop infinito.
+    if (res.status === 401 && !_retryAfterAuth && typeof ensureHmsaToken === 'function') {
+      const token = await ensureHmsaToken();
+      if (token) return _fetch(url, opts, true);
+    }
     if (!res.ok) {
       const txt = await res.text();
       throw new Error('Supabase ' + res.status + ': ' + txt);
@@ -18960,13 +18998,17 @@ async function insSalvarAddCadastro(dim) {
   try {
     const userName = ((typeof getUserName === 'function' && getUserName()) || 'manual');
     const id = `${HOSPITAL_ID}_${info.prefix}_${cadSlugify(nome)}`;
-    const ordem = (AB.cadastro[info.collection] || [])
-      .map(x => x.ordem || 0).reduce((a,b) => Math.max(a,b), 0) + 1;
     const payload = {
-      id, hospital_id: HOSPITAL_ID, ordem, ativo: true,
+      id, hospital_id: HOSPITAL_ID, ativo: true,
       created_by: userName, updated_by: userName
     };
     payload[info.nomeField] = nome;
+    // [Fix 2026-05-11] cadastro_diagnosticos não tem coluna `ordem` (só esp/tc/uo têm).
+    // Bug propagado de HMSA via clonagem; mesmo INSERT retornava HTTP 400 (42703).
+    if (dim !== 'diag') {
+      payload.ordem = (AB.cadastro[info.collection] || [])
+        .map(x => x.ordem || 0).reduce((a,b) => Math.max(a,b), 0) + 1;
+    }
     if (dim === 'diag') payload.status = 'aprovado'; // MVP: entra direto, fila de revisão (Listas) foi removida na Fase 54
     const resp = await fetch(`${SB_URL}/rest/v1/${info.tabela}`, {
       method: 'POST',
