@@ -12833,7 +12833,7 @@ function _renderTopCriticosInternacoes(internacoes) {
     const sexoIdade = `${i.sexo || '?'} · ${i.idade || '?'}a`;
     return `
       <div class="int-top-item" onclick="_intAbrirDetalhe('${i.id}')">
-        <div class="int-top-name"><strong>${escapeHtml(i.paciente_nome)}</strong> · ${escapeHtml(sexoIdade)} · ${escapeHtml(i.clinica || '?')}</div>
+        <div class="int-top-name"><strong>${nomePacienteHtml(i.paciente_nome)}</strong> · ${escapeHtml(sexoIdade)} · ${escapeHtml(i.clinica || '?')}</div>
         <div class="int-top-tempo ${slaCls}">${horas}h${sla.label ? ' · ' + escapeHtml(sla.label) : ''}</div>
       </div>
     `;
@@ -12870,12 +12870,12 @@ async function _intAbrirDetalhe(id) {
     }
     const meta = _intGetEstadoMeta(internacao.governanca, internacao.status);
     const horas = Math.floor((Date.now() - new Date(internacao.entrada_em).getTime()) / (3600 * 1000));
-    document.getElementById('int-modal-titulo').textContent = `${internacao.paciente_nome} · ${horas}h em fila`;
+    document.getElementById('int-modal-titulo').textContent = `${abreviarNomePaciente(internacao.paciente_nome)} · ${horas}h em fila`;
     body.innerHTML = `
       <div class="int-modal-section">
         <div class="int-modal-section-title">Identificação</div>
         <div class="int-modal-grid">
-          <div class="int-modal-field"><div class="int-modal-field-label">Paciente</div><div class="int-modal-field-value">${escapeHtml(internacao.paciente_nome)}</div></div>
+          <div class="int-modal-field"><div class="int-modal-field-label">Paciente</div><div class="int-modal-field-value">${nomePacienteHtml(internacao.paciente_nome)}</div></div>
           <div class="int-modal-field"><div class="int-modal-field-label">Atendimento</div><div class="int-modal-field-value">${escapeHtml(internacao.atendimento_id)}</div></div>
           <div class="int-modal-field"><div class="int-modal-field-label">Sexo · Idade</div><div class="int-modal-field-value">${escapeHtml(internacao.sexo || '?')} · ${internacao.idade || '?'} anos</div></div>
           <div class="int-modal-field"><div class="int-modal-field-label">Clínica</div><div class="int-modal-field-value">${escapeHtml(internacao.clinica || '—')}</div></div>
@@ -13029,7 +13029,7 @@ function _renderFilaInterna(internacoes) {
     return `
       <tr>
         <td><span class="int-risco-badge" style="background:${meta ? meta.bg : '#eee'};color:${meta ? meta.cor : '#666'}">${i.acuidade || '—'}</span></td>
-        <td><strong>${escapeHtml(i.paciente_nome)}</strong></td>
+        <td>${nomePacienteHtml(i.paciente_nome)}</td>
         <td>${escapeHtml(i.clinica || '—')}</td>
         <td>${horas}h</td>
         <td>${i.leito_sugerido_id ? escapeHtml(i.leito_sugerido_id) : '—'}</td>
@@ -13079,7 +13079,7 @@ function _renderFilaExterna(internacoes) {
     return `
       <tr>
         <td><span class="int-risco-badge" style="background:${meta ? meta.bg : '#eee'};color:${meta ? meta.cor : '#666'}">${i.acuidade || '—'}</span></td>
-        <td><strong>${escapeHtml(i.paciente_nome)}</strong></td>
+        <td>${nomePacienteHtml(i.paciente_nome)}</td>
         <td>${escapeHtml(i.clinica || '—')}</td>
         <td>${horas}h</td>
         <td>${escapeHtml(i.status_regulacao || '—')}</td>
@@ -13667,7 +13667,7 @@ async function _onda5AbrirModalAlocar(internacaoId) {
     <div id="onda5-modal-alocar" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;">
       <div style="background:var(--surface,#1E293B);padding:24px;border-radius:12px;max-width:440px;width:92%;border:1px solid rgba(148,163,184,0.20);">
         <h3 style="margin:0 0 8px 0;font-size:18px;color:var(--textPrimary,#F1F5F9);">Alocar leito</h3>
-        <div style="font-size:13px;color:var(--textMuted,#94A3B8);margin-bottom:16px;">${(internacao.paciente_nome || '—').replace(/</g, '&lt;')} · acuidade ${internacao.acuidade != null ? internacao.acuidade : '—'}</div>
+        <div style="font-size:13px;color:var(--textMuted,#94A3B8);margin-bottom:16px;">${nomePacienteHtml(internacao.paciente_nome)} · acuidade ${internacao.acuidade != null ? internacao.acuidade : '—'}</div>
         <label style="font-size:12px;color:var(--textMuted,#94A3B8);">Leito disponível</label>
         <select id="onda5-modal-alocar-select" style="width:100%;padding:8px;margin-top:4px;background:rgba(15,23,42,0.6);color:var(--textPrimary,#F1F5F9);border:1px solid rgba(148,163,184,0.20);border-radius:6px;font-size:13px;">
           <option value="">— escolha —</option>
@@ -13706,7 +13706,7 @@ async function _onda5ConfirmarAlocar(internacaoId) {
   if (!internacao) return;
   try {
     await _intAlocarPaciente(internacao, leitoId, { autorId: (typeof getUserName === 'function' && getUserName()) || 'maestro' });
-    if (typeof intToast === 'function') intToast(`✓ Leito ${leitoId} alocado pra ${internacao.paciente_nome || 'paciente'}`, false);
+    if (typeof intToast === 'function') intToast(`✓ Leito ${leitoId} alocado pra ${abreviarNomePaciente(internacao.paciente_nome) || 'paciente'}`, false);
     _onda5FecharModalAlocar();
     if (typeof renderInternacoesFila === 'function') renderInternacoesFila();
     else if (typeof switchView === 'function') switchView('internacoes', 'fila');
@@ -13758,7 +13758,7 @@ function renderFilaSegmentadaOrigem(lista) {
     const tabela = i._table || 'boarding_episodios';
     return `
       <tr data-internacao-id="${idEsc}">
-        <td>${(i.paciente_nome || '—').replace(/</g, '&lt;')}</td>
+        <td>${nomePacienteHtml(i.paciente_nome)}</td>
         <td style="text-align:center;font-weight:600;">${i.acuidade != null ? i.acuidade : '—'}</td>
         <td>${(i.clinica || '—').replace(/</g, '&lt;')}</td>
         <td style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;">${tempoEspera(i.entrada_em)}</td>
@@ -13898,7 +13898,7 @@ async function exportarFilaXLS() {
       return `${(h / 24).toFixed(1)}d`;
     };
     const rows = lista.map(i => ({
-      'Paciente':              i.paciente_nome || '',
+      'Paciente':              abreviarNomePaciente(i.paciente_nome) || '',
       'Atendimento':           i.atendimento_id || '',
       'Acuidade ESI':          i.acuidade != null ? i.acuidade : '',
       'Especialidade':         i.clinica || '',
@@ -14108,12 +14108,12 @@ async function renderRetaguardaFila() {
       return `
         <tr>
           <td style="font-family:monospace;font-size:11px;color:var(--textMuted)">${escHtml(String(p.id).slice(0, 12))}</td>
-          <td>${escHtml(p.nome_paciente || '(sem nome)')}</td>
+          <td>${nomePacienteHtml(p.nome_paciente)}</td>
           <td>${escHtml(p.atendimento || '—')}</td>
           <td>${escHtml(p.especialidade || '—')}</td>
           <td>${escHtml(p.cid_principal || '—')}</td>
           <td>${formatarTempo(p.created_at)}</td>
-          <td style="text-align:right;white-space:nowrap">${botoesAlocar(idEsc)}<button class="cad-btn-icon cad-btn-danger" onclick="_intExcluirInline('${idEsc}','${escHtml(p.nome_paciente || '').replace(/'/g, '&#39;')}')" title="Excluir registro (pede senha)" aria-label="Excluir" style="margin-left:4px;"><i data-lucide="trash-2"></i></button></td>
+          <td style="text-align:right;white-space:nowrap">${botoesAlocar(idEsc)}<button class="cad-btn-icon cad-btn-danger" onclick="_intExcluirInline('${idEsc}','${(abreviarNomePaciente(p.nome_paciente) || '').replace(/'/g, '&#39;')}')" title="Excluir registro (pede senha)" aria-label="Excluir" style="margin-left:4px;"><i data-lucide="trash-2"></i></button></td>
         </tr>`;
     }).join('');
 
@@ -14332,7 +14332,7 @@ async function renderRetaguardaCards() {
           const cc = getColorClassRetag(dias);
           const isLP = dias > LP_THRESHOLD_DIAS;
           const leitoLabel = p.leito || '—';
-          const nomeLabel = escHtml(p.nome_paciente || '(sem nome)');
+          const nomeLabel = abreviarNomePaciente(p.nome_paciente) || '(sem nome)';
           const espLabel = escHtml(p.especialidade || '—');
           const tooltip = `Leito ${leitoLabel} · ${nomeLabel} · ${espLabel} · ${dias} dia${dias === 1 ? '' : 's'}${isLP ? ' (LP — acima de ' + LP_THRESHOLD_DIAS + 'd)' : ''}`;
           // [Parity C 2026-05-07] Bed-card vira <button> com onclick=intAbrirEditar (igual heatmap principal).
@@ -14801,7 +14801,7 @@ async function renderRetaguardaHistorico() {
         <tr>
           <td><span style="background:rgba(${cor},0.15);color:rgba(${cor},1);border:1px solid rgba(${cor},0.40);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${escHtml(stLabel)}</span></td>
           <td style="font-family:monospace;font-size:11px;color:var(--textMuted)">${escHtml(idShort)}</td>
-          <td>${escHtml(p.nome_paciente || '(sem nome)')}</td>
+          <td>${nomePacienteHtml(p.nome_paciente)}</td>
           <td>${escHtml(p.atendimento || '—')}</td>
           <td>${escHtml(p.setor || '—')}</td>
           <td>${escHtml(p.especialidade || '—')}</td>
@@ -15035,13 +15035,13 @@ async function renderFilaSegmentada() {
     return `
       <tr>
         <td><span style="display:inline-block;background:${acColor};color:#fff;padding:2px 6px;border-radius:3px;font-weight:600;font-size:11px">${i.acuidade || '—'}</span></td>
-        <td><strong>${escapeHtml(i.paciente_nome || 'Sem nome')}</strong></td>
+        <td>${nomePacienteHtml(i.paciente_nome)}</td>
         <td>${escapeHtml(i.clinica || '—')}</td>
         <td>${horas}h</td>
         <td>
           <button class="cad-btn-icon cad-btn-success" onclick="_intHandlerAlocarFila('${i.id}')" title="Alocar em leito"><i data-lucide="bed-double"></i></button>
           ${typeof _intHandlerEditarCompleto === 'function' ? `<button class="cad-btn-icon" onclick="_intHandlerEditarCompleto('${i.id}')" title="Editar"><i data-lucide="pencil"></i></button>` : ''}
-          <button class="cad-btn-icon cad-btn-danger" onclick="_intExcluirInline('${i.id}','${(i.paciente_nome || '').replace(/'/g, '&#39;')}')" title="Excluir registro (pede senha)" aria-label="Excluir"><i data-lucide="trash-2"></i></button>
+          <button class="cad-btn-icon cad-btn-danger" onclick="_intExcluirInline('${i.id}','${(abreviarNomePaciente(i.paciente_nome) || '').replace(/'/g, '&#39;')}')" title="Excluir registro (pede senha)" aria-label="Excluir"><i data-lucide="trash-2"></i></button>
         </td>
       </tr>
     `;
@@ -15080,7 +15080,7 @@ async function _intHandlerAlocarFila(internacaoId) {
   const leitos = await _intGetLeitosDisponiveisHmsa();
   const opts = leitos.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
 
-  document.getElementById('acao-modal-title').textContent = 'Alocar em leito · ' + (internacao.paciente_nome || '—');
+  document.getElementById('acao-modal-title').textContent = 'Alocar em leito · ' + (abreviarNomePaciente(internacao.paciente_nome) || '—');
   document.getElementById('acao-modal-body').innerHTML = `
     <div style="font-size:11px;color:var(--textMuted);margin-bottom:8px">
       Escolha um leito disponível ou digite um novo número.
@@ -15102,7 +15102,7 @@ async function _intHandlerAlocarFila(internacaoId) {
     try {
       await _intAlocarPaciente(internacao, leito, { autorId: getUserName() || 'maestro' });
       closeAcaoEditModal();
-      showToast(`✓ ${internacao.paciente_nome || 'Paciente'} alocado em ${leito}`, 'success');
+      showToast(`✓ ${abreviarNomePaciente(internacao.paciente_nome) || 'Paciente'} alocado em ${leito}`, 'success');
       renderFilaSegmentada();
       if (typeof _atualizarFluxoStepper === 'function') _atualizarFluxoStepper();
     } catch (err) {
@@ -15125,7 +15125,7 @@ async function _intHandlerDarAlta(internacaoHmsaId) {
   const p = rows[0];
 
   const hoje = new Date().toISOString().slice(0, 10);
-  document.getElementById('acao-modal-title').textContent = 'Dar alta · ' + (p.nome_paciente || '—');
+  document.getElementById('acao-modal-title').textContent = 'Dar alta · ' + (abreviarNomePaciente(p.nome_paciente) || '—');
   document.getElementById('acao-modal-body').innerHTML = `
     <div style="font-size:11px;color:var(--textMuted);margin-bottom:8px">
       Leito ${escapeHtml(p.leito || '—')} ficará livre após confirmar.
@@ -15160,7 +15160,7 @@ async function _intHandlerDarAlta(internacaoHmsaId) {
         _onda6MarcarLeitoVagado(p.leito);
       }
       closeAcaoEditModal();
-      showToast(`✓ Alta de ${p.nome_paciente} em ${data}. Leito ${p.leito || '—'} livre.`, 'success');
+      showToast(`✓ Alta de ${abreviarNomePaciente(p.nome_paciente)} em ${data}. Leito ${p.leito || '—'} livre.`, 'success');
       INT.loaded = false;
       if (typeof intFetchAll === 'function') await intFetchAll();
       if (typeof intRenderLista === 'function') intRenderLista();
@@ -15224,7 +15224,7 @@ async function _intHandlerConfirmarAlocar(internacaoId) {
   if (!internacao) { showToast('Internação não encontrada', 'error'); return; }
   if (!internacao.leito_sugerido_id) { showToast('Sem leito sugerido pra confirmar', 'error'); return; }
   const leitoIdInput = prompt(
-    `Confirmar alocação de ${internacao.paciente_nome} no leito ${internacao.leito_sugerido_id}?\n\nDeixe em branco pra usar o sugerido. Digite outro ID pra override:`,
+    `Confirmar alocação de ${abreviarNomePaciente(internacao.paciente_nome)} no leito ${internacao.leito_sugerido_id}?\n\nDeixe em branco pra usar o sugerido. Digite outro ID pra override:`,
     internacao.leito_sugerido_id
   );
   if (leitoIdInput === null) return;
@@ -15272,7 +15272,7 @@ async function _intHandlerAtualizarStatus(internacaoId) {
   const internacao = await _intObter(internacaoId);
   if (!internacao) { showToast('Não encontrado', 'error'); return; }
   const novoStatusReg = prompt(
-    `Atualizar status de regulação de ${internacao.paciente_nome}.\n` +
+    `Atualizar status de regulação de ${abreviarNomePaciente(internacao.paciente_nome)}.\n` +
     `Atual: ${internacao.status_regulacao || '(vazio)'}\n\n` +
     `Digite novo status. Se quiser registrar desfecho final, digite "RESOLVER":`
   );
@@ -15311,7 +15311,7 @@ async function _intHandlerCompletarDados(internacaoId) {
   }
   const internacao = await _intObter(internacaoId);
   if (!internacao) return;
-  const clinica = prompt(`Clínica do paciente ${internacao.paciente_nome}:`, internacao.clinica || '');
+  const clinica = prompt(`Clínica do paciente ${abreviarNomePaciente(internacao.paciente_nome)}:`, internacao.clinica || '');
   if (!clinica) return;
   const acuidadeStr = prompt('Acuidade — prioridade clínica (1=máxima · 4=mínima):', internacao.acuidade || '3');
   const acuidade = parseInt(acuidadeStr, 10);
@@ -17485,7 +17485,7 @@ async function _onda8DeadCode_salvarEpisodioInline_removida() {
           const existing = await checkResp.json();
           if (Array.isArray(existing) && existing.length > 0) {
             const existId = existing[0].id;
-            const existNome = existing[0].paciente_nome || '(sem nome)';
+            const existNome = abreviarNomePaciente(existing[0].paciente_nome) || '(sem nome)';
             alert(`Paciente com atendimento ${atendimento} já está na fila ativa.\n\nID: ${existId}\nNome: ${existNome}\n\nUse o botão Editar (lápis) na lista pra atualizar dados.`);
             if (atendimentoEl) { atendimentoEl.focus(); atendimentoEl.select?.(); }
             return;
@@ -17647,7 +17647,7 @@ async function salvarEpisodio() {
             const existing = await checkResp.json();
             if (Array.isArray(existing) && existing.length > 0) {
               const existId = existing[0].id;
-              const existNome = existing[0].paciente_nome || '(sem nome)';
+              const existNome = abreviarNomePaciente(existing[0].paciente_nome) || '(sem nome)';
               alert(`Paciente com atendimento ${atendimento} já está na fila ativa.\n\nID: ${existId}\nNome: ${existNome}\n\nUse o botão Editar (lápis) na Fila pra atualizar dados.`);
               if (atendimentoEl) { atendimentoEl.focus(); atendimentoEl.select?.(); }
               return;
@@ -18853,7 +18853,7 @@ async function insSalvar() {
         const existing = await checkResp.json();
         if (Array.isArray(existing) && existing.length > 0) {
           const existId = existing[0].id;
-          const existNome = existing[0].paciente_nome || '(sem nome)';
+          const existNome = abreviarNomePaciente(existing[0].paciente_nome) || '(sem nome)';
           alert(`Paciente com atendimento ${atendimento} já está na fila ativa.\n\nID: ${existId}\nNome: ${existNome}\n\nUse o botão Editar (lápis) na linha pra atualizar dados.`);
           atendimentoEl?.focus(); atendimentoEl?.select?.();
           return;
@@ -19464,7 +19464,7 @@ function intRenderLista() {
       <tr class="${isAtivo ? 'hist-row-ativo' : ''}" data-id="${i.id}">
         <td class="hist-cell-editable int-col-leito" onclick="intEditarCelula('${i.id}','leito',this)" title="Leito ${i.leito || '—'}">${i.leito || '—'}</td>
         <td><span class="hist-status-badge ${stClass}">${stLabel}</span></td>
-        <td class="int-col-paciente" title="${(i.nome_paciente || '').replace(/"/g,'&quot;')}">${(i.nome_paciente || '—').replace(/</g,'&lt;')}</td>
+        <td class="int-col-paciente" title="Nome abreviado por LGPD">${abreviarNomePaciente(i.nome_paciente) || '—'}</td>
         <td>${i.atendimento || '—'}</td>
         <td title="Setor: ${(i.setor || '—').replace(/"/g,'&quot;')}">${i.setor || '—'}</td>
         <td class="hist-cell-editable" title="${(i.especialidade || '').replace(/"/g,'&quot;')}" onclick="intEditarCelula('${i.id}','especialidade',this,'select')">${i.especialidade || '—'}</td>
@@ -19477,7 +19477,7 @@ function intRenderLista() {
           ${isAtivo ? `<button class="cad-btn-icon cad-btn-success" onclick="_intHandlerDarAlta('${i.id}')" title="Dar alta médica" aria-label="Dar alta"><i data-lucide="check-circle"></i></button>` : ''}
           <button class="cad-btn-icon" onclick="intAbrirEditar('${i.id}')" title="Editar tudo"><i data-lucide="pencil"></i></button>
           ${isAtivo ? `<button class="cad-btn-icon" onclick="intMarcarSaida('${i.id}')" title="Marcar saída (transferência/óbito/evasão)"><i data-lucide="log-out"></i></button>` : ''}
-          <button class="cad-btn-icon cad-btn-danger" onclick="_intExcluirInline('${i.id}','${(i.nome_paciente || '').replace(/'/g, '&#39;')}')" title="Excluir registro de internação (pede senha)" aria-label="Excluir"><i data-lucide="trash-2"></i></button>
+          <button class="cad-btn-icon cad-btn-danger" onclick="_intExcluirInline('${i.id}','${(abreviarNomePaciente(i.nome_paciente) || '').replace(/'/g, '&#39;')}')" title="Excluir registro de internação (pede senha)" aria-label="Excluir"><i data-lucide="trash-2"></i></button>
         </td>
       </tr>`;
   }).join('');
@@ -19591,7 +19591,7 @@ function exportarInternacoesXLS() {
     ID:                     i.id || '',
     Hospital:               i.hospital || '',
     Atendimento:            i.atendimento || '',
-    Paciente:               i.nome_paciente || '',
+    Paciente:               abreviarNomePaciente(i.nome_paciente) || '',
     Status:                 STATUS_LABEL[i.status_internacao] || i.status_internacao || '',
     'Status (raw)':         i.status_internacao || '',
     Setor:                  i.setor || '',
@@ -21131,6 +21131,21 @@ function placeholderEditavel(label) {
 /** [Fase 5.2 fix] Escapa caracteres HTML perigosos. Usar em qualquer interpolação de texto vindo de input do usuário (nomes de pessoas, descrições). */
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/** [LGPD 2026-05-11] Abrevia nome de paciente em iniciais com ponto. Filtra preposições (de, da, do, das, dos, e).
+ *  "Francisco Bahia Pena" → "F.B.P." · "Maria das Dores Silva" → "M.D.S." */
+const _LGPD_STOPWORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+function abreviarNomePaciente(nome) {
+  if (!nome) return '';
+  const partes = String(nome).trim().split(/\s+/).filter(p => p && !_LGPD_STOPWORDS.has(p.toLowerCase()));
+  if (partes.length === 0) return '';
+  return partes.map(p => p.charAt(0).toUpperCase() + '.').join('');
+}
+/** Retorna span HTML com nome abreviado e tooltip LGPD. Usar em renders de tabela/card. */
+function nomePacienteHtml(nome) {
+  const abrev = abreviarNomePaciente(nome);
+  return `<span title="Nome abreviado por LGPD">${abrev || '—'}</span>`;
 }
 
 /** Formata delta percentual com sinal explícito. */
