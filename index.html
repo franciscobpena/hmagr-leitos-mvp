@@ -7723,6 +7723,9 @@ body.is-edit-focus [data-edit-focus] {
   <button id="btn-ppt" onclick="exportPPT()">
     <i aria-hidden="true" data-lucide="bar-chart-3"></i> PPT
   </button>
+  <button id="btn-pdf" onclick="exportarPDFLeitos()" style="background:var(--card);color:var(--teal);border:1px solid var(--teal);margin-left:4px" title="Exportar PDF de leitos (dashboard + Comanejo)">
+    <i aria-hidden="true" data-lucide="file-text"></i> PDF
+  </button>
   <span style="width:1px;height:20px;background:var(--border);margin:0 4px"></span>
   <button id="btn-sync" onclick="forceSync()" style="background:var(--card);color:var(--teal);border:1px solid var(--teal)">
     <span id="sync-icon"><i aria-hidden="true" data-lucide="refresh-cw"></i></span> Sincronizar
@@ -8610,6 +8613,11 @@ const WARD_COLORS = {
   'Clínica Médica':       '#34D399',
   'Neuro/Tórax/Vascular': '#A78BFA',
   'CirGeral/Bucomaxilo':  '#FB923C',
+  // [HMAGR PDF 2026-05-12] Clone padrão HOB
+  'Neurovascular':        '#A78BFA',
+  'Cirurgia':             '#FB923C',
+  'Comanejo':             '#64748B',
+  'Sem especialidade':    '#94A3B8',
 };
 
 /* [Fase 47] Descrição completa das barreiras de alta — usada em tooltips e PPT.
@@ -12102,6 +12110,392 @@ async function exportarExcelNIR(avaliacao) {
     console.error('[Fase 60] Erro export Excel:', err);
     showToast('Erro ao exportar: ' + (err.message || err), 'error');
   }
+}
+
+/* ============================================================
+   [2026-05-12] PDF EXPORT GESTÃO DE LEITOS — multi-tenant (HOB|HJXXIII|HMAGR)
+   Spec: docs/superpowers/specs/2026-05-12-hob-pdf-paridade-tmp-design.md (no repo hob-leitos)
+   ============================================================ */
+
+/** Lazy load jsPDF (cdnjs imutável, sem SRI necessário).
+ *  Cache global em window._jsPdfLoading pra evitar recarga. */
+function carregarJsPDF() {
+  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf);
+  if (window._jsPdfLoading) return window._jsPdfLoading;
+  window._jsPdfLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.crossOrigin = 'anonymous';
+    s.onload = () => resolve(window.jspdf);
+    s.onerror = () => reject(new Error('Falha carregando jsPDF'));
+    document.head.appendChild(s);
+  });
+  return window._jsPdfLoading;
+}
+
+/** Paleta F0-F4 replicada de index.html:444-448 (--f0..--f4 CSS).
+ *  Sync manual: se CSS mudar, atualizar aqui. */
+const _pdfPaleta = {
+  f0: { fill: [232, 252, 234], border: [40, 167, 69],   text: [20, 80, 35] },   // ≤1d
+  f1: { fill: [240, 252, 232], border: [132, 204, 22],  text: [40, 90, 25] },   // ≤2d
+  f2: { fill: [253, 246, 209], border: [251, 191, 36],  text: [120, 90, 15] },  // ≤4d
+  f3: { fill: [253, 224, 192], border: [245, 158, 11],  text: [140, 80, 20] },  // ≤7d (≤5d Comanejo)
+  f4: { fill: [254, 226, 226], border: [239, 68, 68],   text: [140, 30, 30] },  // >7d (>5d Comanejo)
+};
+
+/** Helper: '#RRGGBB' → [r,g,b]. Fallback teal se inválido. */
+function _hexToRgb(hex) {
+  if (!hex || typeof hex !== 'string') return [20, 184, 166];
+  const m = hex.replace('#','').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return [20, 184, 166];
+  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+}
+
+/** Cor da especialidade no PDF, lookup em WARD_COLORS. Fallback teal. */
+function _pdfCorEspecialidade(esp) {
+  return _hexToRgb(WARD_COLORS[esp]);
+}
+
+/** TMP médio = média de calcDiasHoje. 0 se vazio. */
+function _tmpMedio(pacientes) {
+  if (!pacientes || !pacientes.length) return 0;
+  const soma = pacientes.reduce((s, p) => s + (calcDiasHoje(p) || 0), 0);
+  return soma / pacientes.length;
+}
+
+/** Ordena Object.entries(especsMap) por TMP médio desc.
+ *  Retorna [{ esp, pacs, tmp }]. */
+function _ordenarEspecialidadesPorTMP(especsMap) {
+  return Object.entries(especsMap)
+    .map(([esp, pacs]) => ({ esp, pacs, tmp: _tmpMedio(pacs) }))
+    .sort((a, b) => b.tmp - a.tmp);
+}
+
+/** Ordena cards por dias permanência desc. Tie-break: leito asc (numérico). */
+function _ordenarCardsPorDias(pacientes) {
+  return [...pacientes].sort((a, b) => {
+    const dA = calcDiasHoje(a) || 0;
+    const dB = calcDiasHoje(b) || 0;
+    if (dB !== dA) return dB - dA;
+    const lA = parseInt(a.numLeito || a.leito || 0, 10);
+    const lB = parseInt(b.numLeito || b.leito || 0, 10);
+    return lA - lB;
+  });
+}
+
+/** Nome canônico do hospital pra capa do PDF, indexado por HOSPITAL_ID. */
+const _HOSPITAL_NOMES = {
+  'HOB':     'Hospital Metropolitano Odilon Behrens',
+  'HJXXIII': 'Hospital Estadual João XXIII',
+  'HMAGR':   'Hospital Municipal Abelardo Gadelha da Rocha',
+  'HMSA':    'Hospital Sílvio Avidos',
+};
+
+/** Desenha a capa do PDF: hospital + data + resumo geral. */
+function _pdfDrawCapa(doc, dash, comanejo) {
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const hospNome = _HOSPITAL_NOMES[HOSPITAL_ID] || HOSPITAL_ID;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text(hospNome, 105, 40, { align: 'center' });
+  doc.setFontSize(13);
+  doc.text('Gestão de Leitos — Kanban Altas Oportunas', 105, 50, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.text(`Data de emissão: ${hoje}`, 105, 60, { align: 'center' });
+
+  const lpThr = (typeof getT === 'function') ? getT() : 7;
+  const lpCount = dash.filter(p => (typeof calcDiasHoje === 'function' ? calcDiasHoje(p) : 0) > lpThr).length;
+  const spCount = dash.filter(p => typeof isSP === 'function' && isSP(p)).length;
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Resumo geral', 105, 80, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Total ocupados (dashboard): ${dash.length}`, 105, 88, { align: 'center' });
+  doc.text(`Total Comanejo (retaguarda): ${comanejo.length}`, 105, 94, { align: 'center' });
+  doc.text(`Longa permanência (>${lpThr} dias): ${lpCount}`, 105, 100, { align: 'center' });
+  doc.text(`Sem previsão de alta: ${spCount}`, 105, 106, { align: 'center' });
+}
+
+/** Desenha 1 bed-card no PDF (44×28mm). Paridade visual com bed-card HTML.
+ *  opts = { isComanejo: bool, lpThreshold: number } */
+function _pdfDrawBedCard(doc, x, y, w, h, p, opts) {
+  const isComanejo = !!(opts && opts.isComanejo);
+  const lpThr = (opts && opts.lpThreshold) || (typeof getT === 'function' ? getT() : 7);
+  const dias = (typeof calcDiasHoje === 'function' ? calcDiasHoje(p) : 0) || 0;
+
+  // Tier por dias (Comanejo usa thresholds diferentes)
+  let tierKey;
+  if (isComanejo) {
+    tierKey = dias <= 1 ? 'f0' : dias <= 2 ? 'f1' : dias <= 3 ? 'f2' : dias <= 5 ? 'f3' : 'f4';
+  } else {
+    tierKey = dias <= 1 ? 'f0' : dias <= 2 ? 'f1' : dias <= 4 ? 'f2' : dias <= 7 ? 'f3' : 'f4';
+  }
+  const tier = _pdfPaleta[tierKey];
+  const isLP = dias > lpThr;
+
+  // Borda + fundo
+  doc.setFillColor(tier.fill[0], tier.fill[1], tier.fill[2]);
+  doc.setDrawColor(tier.border[0], tier.border[1], tier.border[2]);
+  doc.setLineWidth(isLP ? 1.0 : 0.4);
+  doc.roundedRect(x, y, w, h, 1.2, 1.2, 'FD');
+  doc.setLineWidth(0.2);
+
+  // Campos
+  const leitoN = p.numLeito || p.leito || '—';
+  const rawNome = p.nomePaciente || p.nome_paciente || '';
+  const nome = (typeof abreviarNomePaciente === 'function')
+    ? (abreviarNomePaciente(rawNome) || '—')
+    : (rawNome.substring(0, 16) || '—');
+  const esp = p.especialidade || '—';
+  const prevText = p.previsaoAlta || p.previsao_kanban || '';
+  const isSP_ = (typeof isSP === 'function') ? isSP(p) : (!prevText || prevText === 'SP');
+  const statusAlta = p.status_alta_pre_marcada;
+  const hasOv = !!p._hasLeitoOverride;
+  const ann = (typeof getAnn === 'function') ? getAnn(p) : null;
+  const temPA = !!ann;
+  const barr = (typeof _barreirasResumo === 'function' && ann) ? _barreirasResumo(ann) : null;
+
+  // Linha 1: Leito grande + badge canto sup direito
+  doc.setTextColor(20, 20, 30);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Leito ${leitoN}`, x + 2, y + 5);
+
+  // Badge canto sup direito — prioridade LP > OV > AD/AP > SP
+  let badgeText = null, badgeColor = null;
+  if (isLP)                  { badgeText = 'LP';        badgeColor = [239, 68, 68]; }
+  else if (hasOv)            { badgeText = 'OV';        badgeColor = [167, 139, 250]; }
+  else if (statusAlta)       { badgeText = statusAlta;  badgeColor = [40, 130, 60]; }
+  else if (isSP_)            { badgeText = 'SP';        badgeColor = [239, 68, 68]; }
+
+  if (badgeText) {
+    doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    const bw = badgeText.length <= 2 ? 8 : 10;
+    doc.roundedRect(x + w - bw - 1, y + 1, bw, 4.5, 0.5, 0.5, 'F');
+    doc.text(badgeText, x + w - bw/2 - 1, y + 4, { align: 'center' });
+  }
+
+  // Linha 2: especialidade
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 110);
+  doc.text(esp.substring(0, 22), x + 2, y + 10);
+
+  // Linha 3: dias GRANDE à esq + nome à dir
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(tier.text[0], tier.text[1], tier.text[2]);
+  doc.text(String(dias), x + 2, y + 18);
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120, 120, 130);
+  doc.text('dias', x + 2, y + 21);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(20, 20, 30);
+  doc.text(nome.substring(0, 18), x + 11, y + 18);
+
+  // Linha 4 (rodapé): bullet PA + prazo + tag barreiras
+  doc.setFontSize(7);
+
+  let footX = x + 2;
+  if (temPA) {
+    doc.setTextColor(59, 130, 246);
+    doc.setFont('helvetica', 'bold');
+    doc.text('•', footX, y + 25);
+    footX += 2;
+    doc.setFont('helvetica', 'normal');
+  }
+
+  if (isSP_) {
+    doc.setTextColor(239, 68, 68);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SP', footX, y + 25);
+  } else if (prevText) {
+    doc.setTextColor(40, 130, 60);
+    const m = prevText.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const display = m ? `${m[3]}/${m[2]}` : prevText.slice(0, 8);
+    doc.text(`até ${display}`, footX, y + 25);
+  } else if (temPA) {
+    doc.setTextColor(100, 100, 110);
+    doc.text('c/ ação', footX, y + 25);
+  }
+
+  // Tag barreiras à direita do rodapé
+  if (barr && barr.count) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(140, 80, 20);
+    const tagText = `Barr:${barr.count}`;
+    doc.text(tagText, x + w - 2, y + 25, { align: 'right' });
+  }
+
+  // Reset cores/fonte
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+}
+
+/** Header de página de especialidade: cor + ranking + stats completas. */
+function _pdfDrawWardHeader(doc, esp, rank, total, pacientes, capacidade, cont) {
+  const marginX = 12;
+  const color = _pdfCorEspecialidade(esp);
+  const tmp = _tmpMedio(pacientes);
+  const ocupados = pacientes.length;
+  const livres = (typeof capacidade === 'number' && capacidade > 0) ? Math.max(0, capacidade - ocupados) : 0;
+  const spCnt = pacientes.filter(p => typeof isSP === 'function' && isSP(p)).length;
+  const spPct = ocupados ? Math.round(spCnt / ocupados * 100) : 0;
+
+  // Linha 1: #rank pequeno cinza + ESP grande colorida
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 130);
+  doc.text(`#${rank}/${total}`, marginX, 12);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(color[0], color[1], color[2]);
+  doc.text(esp + (cont ? ' (cont.)' : ''), marginX + 14, 12);
+
+  // Linha 2: stats
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(80, 80, 90);
+  const capTxt = (typeof capacidade === 'number' && capacidade > 0) ? `${ocupados}/${capacidade} leitos` : `${ocupados} leitos ocupados`;
+  const livresTxt = livres > 0 ? ` · ${livres} livre${livres === 1 ? '' : 's'}` : '';
+  const tmpTxt = ocupados ? ` · TMP ${tmp.toFixed(1)}d` : '';
+  const spTxt = ocupados ? ` · SP ${spCnt} (${spPct}%)` : '';
+  doc.text(`${capTxt}${livresTxt}${tmpTxt}${spTxt}`, marginX, 18);
+
+  // Reset
+  doc.setTextColor(0, 0, 0);
+}
+
+/** Renderiza 1 página de especialidade: header + grid bed-cards. Paginação automática (cont.). */
+function _pdfPageEspecialidade(doc, esp, pacientes, rank, total) {
+  const pageH = 297, marginX = 12;
+  const cardW = 44, cardH = 28, gapX = 3, gapY = 3, cardsPerRow = 4;
+  const topY = 24;
+
+  _pdfDrawWardHeader(doc, esp, rank, total, pacientes, null, false);
+
+  let row = 0, col = 0;
+  pacientes.forEach(p => {
+    const x = marginX + col * (cardW + gapX);
+    let y = topY + row * (cardH + gapY);
+    if (y + cardH > pageH - 12) {
+      doc.addPage();
+      _pdfDrawWardHeader(doc, esp, rank, total, pacientes, null, true);
+      row = 0; col = 0;
+      y = topY;
+    }
+    _pdfDrawBedCard(doc, x, y, cardW, cardH, p, { isComanejo: false });
+    col++;
+    if (col >= cardsPerRow) { col = 0; row++; }
+  });
+}
+
+/** Renderiza página Comanejo (retaguarda PS). Threshold próprio (3d default, lê localStorage).
+ *  Fora do ranking principal: sem #N/Total no header. */
+function _pdfPageComanejo(doc, pacientes) {
+  const pageH = 297, marginX = 12;
+  const cardW = 44, cardH = 28, gapX = 3, gapY = 3, cardsPerRow = 4;
+  const topY = 24;
+
+  const lpThr = (() => {
+    const stored = parseInt(localStorage.getItem(`retaguarda_lp_threshold_${HOSPITAL_ID}`), 10);
+    return (stored >= 1 && stored <= 7) ? stored : 3;
+  })();
+
+  const color = _pdfCorEspecialidade('Comanejo');
+  const tmp = _tmpMedio(pacientes);
+  const lpCount = pacientes.filter(p => (calcDiasHoje(p) || 0) > lpThr).length;
+
+  function drawHeader(cont) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(color[0], color[1], color[2]);
+    doc.text(`Comanejo${cont ? ' (cont.)' : ''}`, marginX, 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 90);
+    doc.text(`Retaguarda PS · LP >${lpThr}d · ${pacientes.length} leitos em retaguarda · TMP ${tmp.toFixed(1)}d · LP ${lpCount}`, marginX, 18);
+    doc.setTextColor(0, 0, 0);
+  }
+  drawHeader(false);
+
+  let row = 0, col = 0;
+  pacientes.forEach(p => {
+    const x = marginX + col * (cardW + gapX);
+    let y = topY + row * (cardH + gapY);
+    if (y + cardH > pageH - 12) {
+      doc.addPage();
+      drawHeader(true);
+      row = 0; col = 0;
+      y = topY;
+    }
+    _pdfDrawBedCard(doc, x, y, cardW, cardH, p, { isComanejo: true, lpThreshold: lpThr });
+    col++;
+    if (col >= cardsPerRow) { col = 0; row++; }
+  });
+}
+
+/** Exporta PDF consolidado: capa + N pags especialidades (TMP desc) + Comanejo (isolado fim). */
+async function exportarPDFLeitos() {
+  let pdfLib;
+  try { pdfLib = await carregarJsPDF(); }
+  catch (e) { alert('Erro carregando jsPDF: ' + e.message); return; }
+  const { jsPDF } = pdfLib;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  // Fetch Comanejo (não vem em allPatients)
+  let comanejo = [];
+  try {
+    const resp = await fetch(`${SB_URL}/rest/v1/internacoes_hmsa?hospital=eq.${HOSPITAL_ID}&setor=eq.Comanejo&status_internacao=eq.ativa&select=*&order=leito.asc`, { headers: SB_H });
+    if (resp.ok) comanejo = await resp.json();
+  } catch (e) { console.warn('[PDF] Comanejo fetch fail:', e); }
+
+  const dash = allPatients || [];
+
+  // Capa
+  _pdfDrawCapa(doc, dash, comanejo);
+
+  // Agrupa dashboard por especialidade, ordena por TMP médio desc
+  const especsMap = {};
+  dash.forEach(p => {
+    const k = (p.especialidade || 'Sem especialidade').toString().trim();
+    if (!especsMap[k]) especsMap[k] = [];
+    especsMap[k].push(p);
+  });
+  const ranking = _ordenarEspecialidadesPorTMP(especsMap);
+  const totalEspecs = ranking.length;
+
+  // 1 página por especialidade, em ordem TMP desc, cards ordenados por dias desc
+  ranking.forEach(({ esp, pacs }, idx) => {
+    doc.addPage();
+    const pacsOrd = _ordenarCardsPorDias(pacs);
+    _pdfPageEspecialidade(doc, esp, pacsOrd, idx + 1, totalEspecs);
+  });
+
+  // Comanejo isolado no fim
+  if (comanejo.length) {
+    doc.addPage();
+    const comanejoOrd = _ordenarCardsPorDias(comanejo);
+    _pdfPageComanejo(doc, comanejoOrd);
+  }
+
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const safeDate = hoje.replace(/\//g, '-');
+  doc.save(`${HOSPITAL_ID}_leitos_${safeDate}.pdf`);
 }
 
 /* ============================================================
