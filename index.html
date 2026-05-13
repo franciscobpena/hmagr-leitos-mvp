@@ -4702,6 +4702,57 @@ footer {
 }
 .cell-select.cell-select-confiab {
   font-weight: 600;
+  min-width: 96px;
+  padding: 4px 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* [HMAGR 2026-05-13 port HOB] Quando confiabilidade ainda não definida, option vazia vira placeholder
+   discreto (italic + cor mute) pra sinalizar CTA, mesma linguagem visual do drilldown ph-editavel. */
+.cell-confiab-null .cell-select-confiab {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--textMuted);
+}
+
+/* [HMAGR 2026-05-13 port HOB] Trigger especial pra célula Tendência do indicador 'Número de Kaizens (A3)':
+   substitui análise de tendência (que não faz sentido pra contagem) por trigger com popover
+   da Matriz de Execução. */
+.cell-projetos-trigger {
+  cursor: help;
+  position: relative;
+}
+.cell-projetos-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px dashed rgba(13, 148, 136, 0.40);
+  background: rgba(13, 148, 136, 0.04);
+  font-size: 11px;
+  color: var(--textPrimary);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.cell-projetos-trigger:hover .cell-projetos-inner,
+.cell-projetos-trigger:focus-within .cell-projetos-inner {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: rgba(13, 148, 136, 0.75);
+}
+.cell-projetos-trigger:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.cell-projetos-count { font-weight: 700; color: var(--teal); font-size: 13px; }
+.cell-projetos-label { color: var(--textMuted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+.cell-projetos-info { opacity: 0.55; }
+.cell-projetos-inner [data-lucide], .cell-projetos-inner svg.lucide {
+  width: 13px; height: 13px; color: var(--teal);
+}
+.cell-projetos-inner [data-lucide="info"], .cell-projetos-inner svg.lucide[data-lucide="info"] {
+  width: 11px; height: 11px; color: var(--textMuted);
 }
 .cell-select option {
   background: var(--cardAlt);
@@ -8614,7 +8665,11 @@ const WARD_COLORS = {
   'Neuro/Tórax/Vascular': '#A78BFA',
   'CirGeral/Bucomaxilo':  '#FB923C',
   // [HMAGR PDF 2026-05-12] Clone padrão HOB
+  // [HMAGR 2026-05-13 port HOB] Adicionado Neuro + Vascular separados (HOB 13/05 fez split):
+  // mantém 'Neurovascular' legado pra não quebrar cards que ainda usam esse setor.
   'Neurovascular':        '#A78BFA',
+  'Neuro':                '#A78BFA',
+  'Vascular':             '#06B6D4',
   'Cirurgia':             '#FB923C',
   'Comanejo':             '#64748B',
   'Sem especialidade':    '#94A3B8',
@@ -21715,12 +21770,14 @@ function _renderProjetosPopoverHTML(projetos) {
     if (!porRaia[r]) porRaia[r] = [];
     porRaia[r].push(p);
   });
+  // [HMAGR 2026-05-13 port HOB fix cores] Espelha CSS card .kaizen-card (Fase 46):
+  // em_andamento=verde (saudável), concluido=azul (pronto p/ encerrar). ANTES invertidos.
   const corStatus = {
-    estacionamento_ideias: 'gray',
-    em_andamento: 'blue',
+    estacionamento_ideias: 'gray-hold',
+    em_andamento: 'green',
     risco_atraso: 'amber',
     em_atraso: 'red',
-    concluido: 'green'
+    concluido: 'blue'
   };
   const blocos = ordemRaia.filter(r => porRaia[r] && porRaia[r].length).map(raiaKey => {
     const linhas = porRaia[raiaKey].sort((a,b) => (a.ordem||0) - (b.ordem||0)).map(p => {
@@ -22455,15 +22512,25 @@ function renderHomeStatusBar() {
       pop.style.left = left + 'px';
       pop.style.top = top + 'px';
     }
+    // [HMAGR 2026-05-13 port HOB fix hover bridge] hide com delay 120ms permite mouse cruzar gap
+    // entre trigger e popover sem fechar. Listeners no pop cancelam hide quando mouse
+    // entra no popover (pra ler/scrollar/clicar). mouseleave do pop dispara hide.
+    let _hideTimer;
     function _show() {
+      clearTimeout(_hideTimer);
       pop.classList.add('is-visible');
       requestAnimationFrame(_positionPop);
     }
-    function _hide() { pop.classList.remove('is-visible'); }
+    function _hide() {
+      clearTimeout(_hideTimer);
+      _hideTimer = setTimeout(() => pop.classList.remove('is-visible'), 120);
+    }
     trigger.addEventListener('mouseenter', _show);
     trigger.addEventListener('mouseleave', _hide);
     trigger.addEventListener('focus', _show);
     trigger.addEventListener('blur', _hide);
+    pop.addEventListener('mouseenter', _show);
+    pop.addEventListener('mouseleave', _hide);
     window.addEventListener('scroll', () => { if (pop.classList.contains('is-visible')) _positionPop(); }, { passive: true });
     window.addEventListener('resize', () => { if (pop.classList.contains('is-visible')) _positionPop(); }, { passive: true });
   });
@@ -22592,12 +22659,14 @@ function renderKaizenLegenda() {
   const cont = document.getElementById('kz-legenda');
   if (!cont) return;
   const statuses = ['estacionamento_ideias', 'em_andamento', 'risco_atraso', 'em_atraso', 'concluido'];
+  // [HMAGR 2026-05-13 port HOB fix cores] Espelha CSS card .kaizen-card (Fase 46):
+  // em_andamento=verde (saudável), concluido=azul (pronto p/ encerrar). ANTES invertidos.
   const colorVar = {
     estacionamento_ideias: 'var(--gray-hold)',
-    em_andamento:          'var(--blue)',
+    em_andamento:          'var(--green)',
     risco_atraso:          'var(--amber)',
     em_atraso:             'var(--red)',
-    concluido:             'var(--green)'
+    concluido:             'var(--blue)'
   };
   cont.innerHTML = statuses.map(s => `
     <span class="leg-item">
@@ -22874,12 +22943,38 @@ function _cellConfiab(ind) {
   const idAttr = JSON.stringify(ind.id).replace(/"/g, '&quot;');
   return `<td class="cell-inline-edit cell-confiab cell-confiab-${conf || 'null'}" data-indicador-id="${escapeHtml(ind.id)}">
     <select class="cell-select cell-select-confiab" onchange="event.stopPropagation(); salvarIndicadorInline(${idAttr}, 'confiabilidade', this.value || null); renderIndicadorDrilldownIfOpen(${idAttr});" onclick="event.stopPropagation()" aria-label="Confiabilidade de ${escapeHtml(ind.nome)}">
-      <option value="" ${!conf ? 'selected' : ''}>— a definir</option>
+      <option value="" ${!conf ? 'selected' : ''}>Definir…</option>
       <option value="alta" ${conf === 'alta' ? 'selected' : ''}>Alta</option>
       <option value="media" ${conf === 'media' ? 'selected' : ''}>Média</option>
       <option value="baixa" ${conf === 'baixa' ? 'selected' : ''}>Baixa</option>
     </select>
   </td>`;
+}
+
+/** [HMAGR 2026-05-13 port HOB] Célula especial pro indicador 'Número de Kaizens (A3)' (id ind_numero_kaizens):
+ *  substitui análise de tendência (que não faz sentido pra contagem de projetos) por trigger
+ *  visual que abre popover com lista de projetos da Matriz de Execução agrupada por raia.
+ *  Reusa _renderProjetosPopoverHTML (mesma UI do popover home) — consistência semântica. */
+function _cellProjetosKaizen(item) {
+  const projetos = (typeof getAllProjetosComOverrides === 'function' && typeof _isProjetoArquivado === 'function')
+    ? getAllProjetosComOverrides().filter(p => !_isProjetoArquivado(p))
+    : [];
+  const popoverHtml = (typeof _renderProjetosPopoverHTML === 'function') ? _renderProjetosPopoverHTML(projetos) : '';
+  const triggerKey = 'ind-kaizens-' + escapeHtml(item.id);
+  return `
+    <td class="cell-projetos-trigger has-popover" tabindex="0"
+        data-popover-trigger="${triggerKey}"
+        aria-label="Ver lista de ${projetos.length} projetos Kaizen ativos da Matriz de Execução"
+        onclick="event.stopPropagation()"
+        title="Tendência não se aplica a contagem · passe o mouse pra ver os ${projetos.length} projetos">
+      <div class="cell-projetos-inner">
+        <i aria-hidden="true" data-lucide="list-checks"></i>
+        <span class="cell-projetos-count">${projetos.length}</span>
+        <span class="cell-projetos-label">projetos</span>
+        <i aria-hidden="true" data-lucide="info" class="cell-projetos-info"></i>
+      </div>
+      ${popoverHtml}
+    </td>`;
 }
 
 /** [Fase 6 D1 / Fase 7 I1] Salva campo inline (resp/corresp/confiab) sem abrir modal e sem perder foco.
@@ -23239,13 +23334,14 @@ function renderIndicadores() {
         <td class="col-valor">${fmtValorIndicador(item, item.ddc.valor)}</td>
         <td class="col-meta">${metaValorHtml}</td>
         ${mesesTd}
+        ${item.id === 'ind_numero_kaizens' ? _cellProjetosKaizen(item) : `
         <td>
           <div class="trend-cell ${t.direcao}">
             ${trendArrowHtml(t.movimento)}
             <span>${t.label}</span>
             <span class="trend-delta">(${fmtDelta(t.deltaPct)})</span>
           </div>
-        </td>
+        </td>`}
         ${_cellRespCorresp(item)}
         ${_cellConfiab(item)}
       </tr>`;
@@ -23305,6 +23401,50 @@ function renderIndicadores() {
     ${dinamicaHtml}
   `;
   refreshIcons();
+
+  // [HMAGR 2026-05-13 port HOB] Wire popover de projetos pro indicador ind_numero_kaizens.
+  // Portal pattern (igual renderKpisHome): popover é movido pro <body> pra escapar de
+  // overflow:hidden da tabela + posicionado via getBoundingClientRect. Hover bridge
+  // (delay 120ms + listeners no pop) garante mouse cruzar gap sem fechar.
+  cont.querySelectorAll('.cell-projetos-trigger[data-popover-trigger]').forEach(trigger => {
+    const key = trigger.getAttribute('data-popover-trigger');
+    const popInline = trigger.querySelector('.ks-popover');
+    if (!popInline) return;
+    document.querySelectorAll(`body > .ks-popover[data-portal-from="${key}"]`).forEach(p => p.remove());
+    popInline.setAttribute('data-portal-from', key);
+    const pop = document.body.appendChild(popInline);
+    function _positionPop() {
+      const rect = trigger.getBoundingClientRect();
+      const popW = pop.offsetWidth || 380;
+      let left = rect.left + rect.width / 2 - popW / 2;
+      left = Math.max(12, Math.min(left, window.innerWidth - popW - 12));
+      const margem = 12;
+      const gap = 10;
+      const espacoAbaixo = window.innerHeight - rect.bottom - gap - margem;
+      const espacoAcima  = rect.top - gap - margem;
+      const irPraCima = espacoAbaixo < 220 && espacoAcima > espacoAbaixo;
+      const espacoMax = Math.max(180, irPraCima ? espacoAcima : espacoAbaixo);
+      pop.style.maxHeight = espacoMax + 'px';
+      const popH = pop.offsetHeight;
+      const top = irPraCima ? Math.max(margem, rect.top - popH - gap) : rect.bottom + gap;
+      pop.style.left = left + 'px';
+      pop.style.top = top + 'px';
+    }
+    let _hideTimer;
+    function _show() { clearTimeout(_hideTimer); pop.classList.add('is-visible'); requestAnimationFrame(_positionPop); }
+    function _hide() {
+      clearTimeout(_hideTimer);
+      _hideTimer = setTimeout(() => pop.classList.remove('is-visible'), 120);
+    }
+    trigger.addEventListener('mouseenter', _show);
+    trigger.addEventListener('mouseleave', _hide);
+    trigger.addEventListener('focus', _show);
+    trigger.addEventListener('blur', _hide);
+    pop.addEventListener('mouseenter', _show);
+    pop.addEventListener('mouseleave', _hide);
+    window.addEventListener('scroll', () => { if (pop.classList.contains('is-visible')) _positionPop(); }, { passive: true });
+    window.addEventListener('resize', () => { if (pop.classList.contains('is-visible')) _positionPop(); }, { passive: true });
+  });
 }
 
 /* ============================================================
