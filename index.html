@@ -23283,9 +23283,10 @@ function abrirRegistrarMesVolumetria() {
 function renderIndicadores() {
   const cont = document.getElementById('ind-tabela-container');
   if (!cont) return;
-  // [HOB 2026-05-08] Multi-tenant guard: MOCK_DATA.indicadores é HMSA-específico (lista de itens
-  // hardcoded). Outros hospitais veem empty state até cadastrarem indicadores próprios.
-  if (typeof HOSPITAL_ID !== 'undefined' && HOSPITAL_ID !== 'HMSA') {
+  // [HOB 2026-05-08 / HMAGR 2026-05-13] Multi-tenant guard: MOCK_DATA.indicadores é
+  // HMSA+HMAGR-específico. HMAGR ganhou seus próprios dados em 13/05 (commit f11ddbc).
+  // Outros hospitais (HOB, HJXXIII) veem empty state até cadastrarem indicadores próprios.
+  if (typeof HOSPITAL_ID !== 'undefined' && HOSPITAL_ID !== 'HMSA' && HOSPITAL_ID !== 'HMAGR') {
     cont.innerHTML = `
       <div style="padding:32px 16px;text-align:center;color:var(--textMuted);font-style:italic;">
         Indicadores ainda não cadastrados pra ${HOSPITAL_ID}.<br>
@@ -23496,8 +23497,8 @@ function getAllProjetosComOverrides() {
  *  (vínculo via form Novo Projeto). União sem duplicatas.
  *  [HOB 2026-05-08] MOCK_DATA.indicadores é HMSA-específico — outros hospitais retornam []. */
 function getIndicadoresByProjeto(projetoId) {
-  // Multi-tenant guard: mocks só pra HMSA
-  if (typeof HOSPITAL_ID !== 'undefined' && HOSPITAL_ID !== 'HMSA') return [];
+  // Multi-tenant guard: mocks de indicadores valem pra HMSA + HMAGR (HMAGR ganhou dados próprios 13/05)
+  if (typeof HOSPITAL_ID !== 'undefined' && HOSPITAL_ID !== 'HMSA' && HOSPITAL_ID !== 'HMAGR') return [];
   const proj = getProjetoComOverrides(projetoId);
   // [Fase 46] Se proj define explicitamente indicadores_vinculados (via override
   // ou form de criação), o array é AUTORITATIVO (override pode remover reverse-only).
