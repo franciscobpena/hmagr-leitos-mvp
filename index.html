@@ -10070,7 +10070,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_baixo_risco', 'proj_ambientes_assistenciais', 'proj_pcp', 'proj_huddle']
+      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_sala_decisao', 'proj_hmagr_caracterizacao_boarding', 'proj_hmagr_ucp']
     },
     {
       id: 'ind_los_com_internacao',
@@ -10084,7 +10084,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_ucp', 'proj_intervalo_am_ah', 'proj_alta_10']
+      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_bloco_cirurgico', 'proj_hmagr_altas_oportunas_10', 'proj_hmagr_sala_decisao', 'proj_hmagr_caracterizacao_boarding', 'proj_hmagr_ucp']
     },
     {
       id: 'ind_los_sem_internacao',
@@ -10098,7 +10098,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_baixo_risco', 'proj_ambientes_assistenciais']
+      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_ambientes_hosp']
     },
     {
       id: 'ind_tmp_origem_ps',
@@ -10112,7 +10112,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_ucp', 'proj_baixo_risco', 'proj_intervalo_am_ah', 'proj_pcp', 'proj_alta_10', 'proj_huddle']
+      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_altas_oportunas_10', 'proj_hmagr_sala_decisao', 'proj_hmagr_caracterizacao_boarding', 'proj_hmagr_ucp']
     },
     {
       id: 'ind_fator_utilizacao',
@@ -10126,7 +10126,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_ambientes_assistenciais', 'proj_pcp']
+      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_bloco_cirurgico', 'proj_hmagr_altas_oportunas_10']
     },
     {
       id: 'ind_setup_leitos',
@@ -10140,7 +10140,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_intervalo_am_ah', 'proj_alta_10']
+      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_bloco_cirurgico', 'proj_hmagr_altas_oportunas_10']
     },
     {
       id: 'ind_numero_kaizens',
@@ -10154,7 +10154,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_ucp', 'proj_huddle']
+      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_daily_huddle', 'proj_hmagr_bloco_cirurgico', 'proj_hmagr_sala_decisao', 'proj_hmagr_caracterizacao_boarding', 'proj_hmagr_ucp']
     }
   ]
 };
@@ -10201,106 +10201,20 @@ const MOCK_PROJETOS = {
     { id: 'saida',      nome: 'Saída',      ordem: 2 },
     { id: 'governanca', nome: 'Governança', ordem: 3 }
   ],
+  // [HMAGR 2026-05-13] 10 projetos Kaizen reais HMAGR substituem leak HOB.
+  // Sem ações cadastradas ainda — equipe HMAGR cadastra via UI conforme avançar.
+  // indicadores_vinculados (M:N forward) + projetos_vinculados em MOCK_INDICADORES (reverso).
   projetos: [
-    {
-      id: 'proj_ucp',
-      raia: 'saida',
-      nome: 'UCP',
-      responsavel: 'Ramony',
-      ordem: 1,
-      acoes: [
-        { id: 'ucp_a1', ordem: 1, descricao: 'Definir e institucionalizar critérios de admissão para UCP e governança com NIR',                          responsavel: 'Ramony',  progresso_pct: 100, prazo: '2026-02-28', status: 'concluido' },
-        { id: 'ucp_a2', ordem: 2, descricao: 'Implementar indicador de pacientes com alta em até 72h sobre o total do período',                         responsavel: 'Ramony',  progresso_pct: 100, prazo: '2026-03-06', status: 'concluido' },
-        { id: 'ucp_a3', ordem: 3, descricao: 'Implementar/revisar quadro Kanban para previsão de alta com pendências e equipe',                         responsavel: 'Larissa', progresso_pct: 100, prazo: '2026-03-06', status: 'concluido' },
-        { id: 'ucp_a4', ordem: 4, descricao: 'Incluir pacientes da UCP na visita multiprofissional',                                                    responsavel: 'Bárbara', progresso_pct: 80,  prazo: '2026-03-27', status: 'em_andamento' }
-      ]
-    },
-    {
-      id: 'proj_baixo_risco',
-      raia: 'passagem',
-      nome: 'Baixo Risco',
-      responsavel: 'Maria',
-      ordem: 2,
-      acoes: [
-        { id: 'br_a1', ordem: 1, descricao: 'Readequar quadros Kanban no PS para apoio do Fluxista (Kanban PS digital na TV)',                          responsavel: 'Maria',   progresso_pct: null, prazo: '2026-04-10', status: 'em_atraso' },
-        { id: 'br_a2', ordem: 2, descricao: 'Elaborar rotina diária do fluxista e treinar atividades e acompanhamentos',                                 responsavel: 'Maria',   progresso_pct: 100, prazo: '2026-01-30', status: 'concluido' },
-        { id: 'br_a3', ordem: 3, descricao: 'Definir responsáveis pela governança do Fast-Track e levantamento dos números',                            responsavel: 'Dani',    progresso_pct: 100, prazo: '2026-03-20', status: 'concluido' },
-        { id: 'br_a4', ordem: 4, descricao: 'Definir e operacionalizar regras e alçadas para solicitações de tomografia',                                responsavel: 'Bárbara', progresso_pct: 100, prazo: '2026-03-17', status: 'concluido' },
-        { id: 'br_a5', ordem: 5, descricao: 'Reavaliar medicações substitutas de EV por IM ou Oral',                                                     responsavel: 'Bárbara', progresso_pct: 100, prazo: '2026-01-19', status: 'concluido' },
-        { id: 'br_a6', ordem: 6, descricao: 'Readequar critérios e tipos de pendências para acompanhamento do paciente',                                 responsavel: 'Tatiane', progresso_pct: 100, prazo: '2026-03-12', status: 'concluido' }
-      ]
-    },
-    {
-      id: 'proj_intervalo_am_ah',
-      raia: 'saida',
-      nome: 'Intervalo A.M. e A.H.',
-      responsavel: 'Giulianne',
-      ordem: 3,
-      acoes: [
-        { id: 'iam_a1', ordem: 1, descricao: 'Implementar espaço de alta com critérios de elegibilidade, processo e contingência',                       responsavel: 'Ramony',     progresso_pct: null, prazo: '2026-05-08', status: 'em_andamento' },
-        { id: 'iam_a2', ordem: 2, descricao: 'Implementar quadro Kamishibai e governança de Alta Médica/Hospitalar com líderes por área',                responsavel: 'Giulianne',  progresso_pct: null, prazo: '2026-03-06', status: 'em_atraso' },
-        { id: 'iam_a3', ordem: 3, descricao: 'Estabelecer processo/rito de acompanhamento do quadro',                                                    responsavel: 'Larissa',    progresso_pct: null, prazo: '2026-03-06', status: 'em_atraso' },
-        { id: 'iam_a4', ordem: 4, descricao: 'Estabelecer e monitorar indicador de tempo Alta Médica vs Hospitalar com causas de atraso',                responsavel: 'Bárbara',    progresso_pct: null, prazo: '2026-03-16', status: 'em_atraso' }
-      ]
-    },
-    {
-      id: 'proj_ambientes_assistenciais',
-      raia: 'passagem',
-      nome: 'Ambientes assistenciais',
-      responsavel: 'Larissa',
-      ordem: 4,
-      acoes: [
-        { id: 'amb_a1', ordem: 1, descricao: 'Readequar espaço UDM para Retaguarda do PS e atualizar nomenclatura no sistema',                           responsavel: 'Larissa', progresso_pct: 100, prazo: '2026-03-06', status: 'concluido' },
-        { id: 'amb_a2', ordem: 2, descricao: 'Implementar Kanban Retaguarda do PS (meta 24h, vermelho após 48h)',                                        responsavel: 'Larissa', progresso_pct: 50,  prazo: '2026-03-06', status: 'em_andamento' },
-        { id: 'amb_a3', ordem: 3, descricao: 'Readequar sala de medicação para UDM com meta de permanência 6h',                                          responsavel: 'Larissa', progresso_pct: 100, prazo: '2026-03-06', status: 'concluido' },
-        { id: 'amb_a4', ordem: 4, descricao: 'Revisar Kanban na UDM com meta de permanência 6h',                                                         responsavel: 'Larissa', progresso_pct: 100, prazo: '2026-03-06', status: 'concluido' },
-        { id: 'amb_a5', ordem: 5, descricao: 'Implementar adesivos de segmentação de fluxo do PS',                                                       responsavel: 'Bárbara', progresso_pct: 30,  prazo: '2026-03-20', status: 'em_andamento' }
-      ]
-    },
-    {
-      id: 'proj_pcp',
-      raia: 'governanca',
-      nome: 'PCP',
-      responsavel: 'Giulianne',
-      ordem: 5,
-      acoes: [
-        { id: 'pcp_a1', ordem: 1, descricao: 'Revisar critérios e gatilhos do PCP',                                                                       responsavel: 'Giulianne', progresso_pct: null, prazo: '2026-03-18', status: 'estacionamento_ideias' },
-        { id: 'pcp_a2', ordem: 2, descricao: 'Rever ações por nível de ativação do PCP e áreas',                                                          responsavel: 'Giulianne', progresso_pct: null, prazo: '2026-03-18', status: 'estacionamento_ideias' },
-        { id: 'pcp_a3', ordem: 3, descricao: 'Treinar e implementar novo PCP com as áreas',                                                               responsavel: 'Giulianne', progresso_pct: null, prazo: '2026-03-20', status: 'estacionamento_ideias' },
-        { id: 'pcp_a4', ordem: 4, descricao: 'Monitorar quantidade de ativação por níveis e tempo ativado, recalibrando após 4 semanas',                  responsavel: 'Giulianne', progresso_pct: null, prazo: '2026-04-30', status: 'estacionamento_ideias' },
-        { id: 'pcp_a5', ordem: 5, descricao: 'Sugestão de ações do PCP: Rever parecer',                                                                   responsavel: null,        progresso_pct: null, prazo: null,         status: 'estacionamento_ideias' }
-      ]
-    },
-    {
-      id: 'proj_alta_10',
-      raia: 'saida',
-      nome: 'Alta 10',
-      responsavel: null,
-      ordem: 6,
-      acoes: [
-        { id: 'a10_a1', ordem: 1, descricao: 'Elaborar indicador de alta médica (%) por horário',                                                         responsavel: null, progresso_pct: null, prazo: '2026-03-18', status: 'estacionamento_ideias' },
-        { id: 'a10_a2', ordem: 2, descricao: 'Recrutar grupo multidisciplinar líder da mudança',                                                          responsavel: null, progresso_pct: null, prazo: '2026-03-20', status: 'estacionamento_ideias' },
-        { id: 'a10_a3', ordem: 3, descricao: 'Às 7h10, revisar painel + 3 maiores atrasos do dia anterior',                                               responsavel: null, progresso_pct: null, prazo: '2026-03-27', status: 'estacionamento_ideias' },
-        { id: 'a10_a4', ordem: 4, descricao: 'Implantar passagem de plantão diária, round 7h30, ritual 10min, gestão visual, WhatsApp, reunião mensal',   responsavel: null, progresso_pct: null, prazo: null,         status: 'estacionamento_ideias' },
-        { id: 'a10_a5', ordem: 5, descricao: 'Fixar kit de artes (renovar 60 dias); painel de resultados atualizado às sextas',                           responsavel: null, progresso_pct: null, prazo: null,         status: 'estacionamento_ideias' },
-        { id: 'a10_a6', ordem: 6, descricao: 'Formalizar checklist D-1, microfluxo, horário-alvo e papéis em documentos oficiais',                        responsavel: null, progresso_pct: null, prazo: null,         status: 'estacionamento_ideias' },
-        { id: 'a10_a7', ordem: 7, descricao: 'Entregar microfluxo impresso no primeiro plantão de novos profissionais',                                   responsavel: null, progresso_pct: null, prazo: null,         status: 'estacionamento_ideias' },
-        { id: 'a10_a8', ordem: 8, descricao: 'Indicadores no painel permanente, auditoria semanal com Pareto, relatório trimestral',                      responsavel: null, progresso_pct: null, prazo: null,         status: 'estacionamento_ideias' },
-        { id: 'a10_a9', ordem: 9, descricao: 'Garantir pelo menos 2 pessoas treinadas por unidade',                                                        responsavel: null, progresso_pct: null, prazo: null,         status: 'estacionamento_ideias' }
-      ]
-    },
-    {
-      id: 'proj_huddle',
-      raia: 'governanca',
-      nome: 'Huddle',
-      responsavel: 'Maria',
-      ordem: 7,
-      acoes: [
-        { id: 'hud_a1', ordem: 1, descricao: 'Revisar rotina da daily huddle com a equipe',          responsavel: 'Maria', progresso_pct: 100, prazo: '2026-02-27', status: 'concluido' },
-        { id: 'hud_a2', ordem: 2, descricao: 'Implementar gestão à vista do Huddle',                  responsavel: 'Maria', progresso_pct: 100, prazo: '2026-02-27', status: 'concluido' },
-        { id: 'hud_a3', ordem: 3, descricao: 'Rodar pesquisa qualitativa com o time',                responsavel: 'Maria', progresso_pct: 0,   prazo: '2026-05-08', status: 'em_andamento' }
-      ]
-    }
+    { id: 'proj_hmagr_baixo_risco_fluxo',     raia: 'passagem',   nome: 'Otimização Fluxo Paciente Baixo Risco',    responsavel: null, ordem: 1,  acoes: [], indicadores_vinculados: ['ind_nedocs', 'ind_los_sem_internacao', 'ind_tmp_origem_ps', 'ind_numero_kaizens'] },
+    { id: 'proj_hmagr_intervalo_am_ah',       raia: 'saida',      nome: 'Intervalo Alta Médica e Hospitalar (CM)',  responsavel: null, ordem: 2,  acoes: [], indicadores_vinculados: ['ind_tmp_origem_ps', 'ind_fator_utilizacao', 'ind_los_com_internacao', 'ind_setup_leitos'] },
+    { id: 'proj_hmagr_ambientes_hosp',        raia: 'passagem',   nome: 'Sinalização e Padronização Ambientes Hosp', responsavel: null, ordem: 3,  acoes: [], indicadores_vinculados: ['ind_los_sem_internacao', 'ind_los_com_internacao', 'ind_nedocs', 'ind_numero_kaizens'] },
+    { id: 'proj_hmagr_setup_leitos',          raia: 'saida',      nome: 'Setup de Leitos',                          responsavel: null, ordem: 4,  acoes: [], indicadores_vinculados: ['ind_setup_leitos', 'ind_fator_utilizacao', 'ind_tmp_origem_ps', 'ind_nedocs'] },
+    { id: 'proj_hmagr_daily_huddle',          raia: 'governanca', nome: 'Implementação Daily Huddle',               responsavel: null, ordem: 5,  acoes: [], indicadores_vinculados: ['ind_numero_kaizens', 'ind_nedocs', 'ind_tmp_origem_ps', 'ind_fator_utilizacao'] },
+    { id: 'proj_hmagr_bloco_cirurgico',       raia: 'governanca', nome: 'Indicadores Bloco Cirúrgico',              responsavel: null, ordem: 6,  acoes: [], indicadores_vinculados: ['ind_fator_utilizacao', 'ind_los_com_internacao', 'ind_setup_leitos', 'ind_numero_kaizens'] },
+    { id: 'proj_hmagr_altas_oportunas_10',    raia: 'saida',      nome: 'Altas Oportunas até as 10:00',             responsavel: null, ordem: 7,  acoes: [], indicadores_vinculados: ['ind_tmp_origem_ps', 'ind_fator_utilizacao', 'ind_setup_leitos', 'ind_los_com_internacao'] },
+    { id: 'proj_hmagr_sala_decisao',          raia: 'passagem',   nome: 'Otimização Sala de Decisão',               responsavel: null, ordem: 8,  acoes: [], indicadores_vinculados: ['ind_tmp_origem_ps', 'ind_los_com_internacao', 'ind_nedocs', 'ind_numero_kaizens'] },
+    { id: 'proj_hmagr_caracterizacao_boarding', raia: 'governanca', nome: 'Caracterização do Boarding',             responsavel: null, ordem: 9,  acoes: [], indicadores_vinculados: ['ind_nedocs', 'ind_tmp_origem_ps', 'ind_los_com_internacao', 'ind_numero_kaizens'] },
+    { id: 'proj_hmagr_ucp',                   raia: 'passagem',   nome: 'Implementação Unidade de Curta Permanência', responsavel: null, ordem: 10, acoes: [], indicadores_vinculados: ['ind_los_com_internacao', 'ind_tmp_origem_ps', 'ind_nedocs', 'ind_numero_kaizens'] }
   ]
 };
 
@@ -24483,12 +24397,12 @@ const DataLayer = (function() {
     },
 
     /** Lista IDs de todos os projetos visíveis (mock + server net-new + override _is_new).
-     *  [HOB 2026-05-08] Multi-tenant fix: MOCK_DATA é HMSA-específico (projetos UCP/Larissa/Ramony/etc.).
-     *  Outros hospitais (HOB) veem APENAS dados reais do banco. Empty state força equipe a criar
-     *  projetos próprios em vez de herdar lista HMSA. */
+     *  [HOB 2026-05-08 / HMAGR 2026-05-13] Multi-tenant fix: MOCK_DATA é HMSA+HMAGR-específico.
+     *  HMAGR ganhou 10 projetos próprios em 13/05 (commit b9c45e7+). Outros hospitais (HOB,
+     *  HJXXIII) veem APENAS dados reais do banco — empty state força equipe a criar projetos. */
     listProjetoIds() {
       const ids = new Set();
-      if (typeof MOCK_DATA !== 'undefined' && typeof HOSPITAL_ID !== 'undefined' && HOSPITAL_ID === 'HMSA') {
+      if (typeof MOCK_DATA !== 'undefined' && typeof HOSPITAL_ID !== 'undefined' && (HOSPITAL_ID === 'HMSA' || HOSPITAL_ID === 'HMAGR')) {
         MOCK_DATA.projetos.projetos.forEach(p => ids.add(p.id));
       }
       const sd = (typeof KaizenSync !== 'undefined' && KaizenSync.getState && KaizenSync.getState().serverData) || null;
@@ -24500,11 +24414,12 @@ const DataLayer = (function() {
     },
 
     /** Lista todas ações visíveis de um projeto (mock + server + override).
-     *  [HOB 2026-05-08] MOCK_DATA é HMSA-específico — outros hospitais veem só server+override. */
+     *  [HOB 2026-05-08 / HMAGR 2026-05-13] MOCK_DATA é HMSA+HMAGR-específico. HMAGR projetos
+     *  começam com acoes:[] — equipe cadastra via UI. Outros hospitais (HOB/HJXXIII) só server. */
     listAcoesByProjeto(projId) {
       const ids = new Set();
-      // Mock (HMSA only)
-      if (typeof MOCK_DATA !== 'undefined' && typeof HOSPITAL_ID !== 'undefined' && HOSPITAL_ID === 'HMSA') {
+      // Mock (HMSA + HMAGR)
+      if (typeof MOCK_DATA !== 'undefined' && typeof HOSPITAL_ID !== 'undefined' && (HOSPITAL_ID === 'HMSA' || HOSPITAL_ID === 'HMAGR')) {
         const p = MOCK_DATA.projetos.projetos.find(p => p.id === projId);
         if (p) p.acoes.forEach(a => ids.add(a.id));
       }
