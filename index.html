@@ -13902,6 +13902,7 @@ function _onda6AbrirModalOutrasSaidas(rowId, origem, tabela) {
   const opcoes = [
     { value: 'alta_medica', label: 'Alta médica direta' },
     { value: 'transferido_externo', label: 'Regulação externa' },
+    { value: 'desospitalizacao', label: 'Desospitalização' },
     { value: 'obito', label: 'Óbito' },
     { value: 'evasao', label: 'Evasão' },
     { value: 'cancelada', label: 'Cancelado' }
@@ -13941,6 +13942,7 @@ async function _onda6ConfirmarOutrasSaidas(rowId, origem, tabela) {
       const destinoMap = {
         alta_medica: { id: 'HMSA_dest_alta_medica', original: 'Alta Médica' },
         transferido_externo: { id: 'HMSA_dest_transferido_externo', original: 'Transferido (externo)' },
+        desospitalizacao: { id: null, original: 'Desospitalização' },
         obito: { id: null, original: 'Óbito' },
         evasao: { id: null, original: 'Evasão' },
         cancelada: { id: null, original: 'Cancelado' }
@@ -17487,12 +17489,13 @@ async function _onda6ConfirmarSaidaBoarding(idEp, motivo, dataCustom, horaCustom
   };
 
   const destinoMap = {
-    alta_medica:    { id: 'HMSA_dest_alta_medica',          original: 'Alta Médica' },
-    foi_pra_leito:  { id: 'HMSA_dest_internado',            original: 'Internado' },
-    transferido:    { id: 'HMSA_dest_transferido_externo',  original: 'Transferido (externo)' },
-    obito:          { id: null,                              original: 'Óbito' },
-    evasao:         { id: null,                              original: 'Evasão' },
-    retaguarda_ps:  { id: null,                              original: 'Retaguarda PS' }
+    alta_medica:       { id: 'HMSA_dest_alta_medica',          original: 'Alta Médica' },
+    foi_pra_leito:     { id: 'HMSA_dest_internado',            original: 'Internado' },
+    transferido:       { id: 'HMSA_dest_transferido_externo',  original: 'Transferido (externo)' },
+    desospitalizacao:  { id: null,                              original: 'Desospitalização' },
+    obito:             { id: null,                              original: 'Óbito' },
+    evasao:            { id: null,                              original: 'Evasão' },
+    retaguarda_ps:     { id: null,                              original: 'Retaguarda PS' }
   };
   const dest = destinoMap[motivo] || { id: null, original: motivo };
 
@@ -17748,12 +17751,13 @@ function _onda8AbrirSaidaPopover(idEp, btnEl) {
   _onda8FecharSaidaPopover();
   const idEsc = String(idEp).replace(/'/g, "\\'");
   const opcoes = [
-    { motivo: 'alta_medica',   label: 'Alta médica',                       cor: 'rgba(34,197,94,1)' },
-    { motivo: 'foi_pra_leito', label: 'Internou (vai pra fila NIR)',       cor: 'rgba(20,184,166,1)' },
-    { motivo: 'transferido',   label: 'Transferiu (externo)',              cor: 'rgba(59,130,246,1)' },
-    { motivo: 'obito',         label: 'Óbito',                             cor: 'rgba(148,163,184,1)' },
-    { motivo: 'evasao',        label: 'Evasão',                            cor: 'rgba(249,115,22,1)' },
-    { motivo: 'retaguarda_ps', label: 'Retaguarda PS (não vai pra leito)', cor: 'rgba(168,85,247,1)' }
+    { motivo: 'alta_medica',     label: 'Alta médica',                       cor: 'rgba(34,197,94,1)' },
+    { motivo: 'foi_pra_leito',   label: 'Internou (vai pra fila NIR)',       cor: 'rgba(20,184,166,1)' },
+    { motivo: 'transferido',     label: 'Transferiu (externo)',              cor: 'rgba(59,130,246,1)' },
+    { motivo: 'desospitalizacao',label: 'Desospitalização',                  cor: 'rgba(99,102,241,1)' },
+    { motivo: 'obito',           label: 'Óbito',                             cor: 'rgba(148,163,184,1)' },
+    { motivo: 'evasao',          label: 'Evasão',                            cor: 'rgba(249,115,22,1)' },
+    { motivo: 'retaguarda_ps',   label: 'Retaguarda PS (não vai pra leito)', cor: 'rgba(168,85,247,1)' }
   ];
   const opts = opcoes.map(o =>
     `<button type="button" class="saida-opt" onclick="_onda8DispararSaida('${idEsc}','${o.motivo}'); _onda8FecharSaidaPopover();">
