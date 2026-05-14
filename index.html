@@ -14851,13 +14851,24 @@ async function _gestaoAbrirSettings() {
   const cats = _GESTAO_LEITOS_CATEGORIAS || [];
   const escHtml = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
+  // [2026-05-14] Dropdown UNIÃO cadastro_especialidades ∪ config_gestao_leitos pra anti-duplicidade.
+  // Nova via "Outros..." persiste só em config_gestao_leitos (escopo mínimo, decisão Maestro).
+  let cadastroNomes = [];
+  try {
+    const respEsp = await fetch(`${SB_URL}/rest/v1/cadastro_especialidades?hospital_id=eq.${encodeURIComponent(HOSPITAL_ID)}&ativo=eq.true&select=nome&order=nome`, { headers: SB_H });
+    if (respEsp.ok) cadastroNomes = (await respEsp.json()).map(e => e.nome).filter(Boolean);
+  } catch (e) { console.warn('[Configurar Leitos] fetch cadastro_especialidades falhou:', e); }
+  const configNomes = cats.map(c => c.nome_categoria).filter(Boolean);
+  window._GESTAO_TODAS_ESPECIALIDADES = [...new Set([...cadastroNomes, ...configNomes])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
   const linhasHtml = cats.map((c, i) => `
     <div class="gl-cfg-row" data-original-nome="${escHtml(c.nome_categoria)}" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
       <input type="text" class="gl-cfg-nome" value="${escHtml(c.nome_categoria)}" maxlength="40" style="flex:2;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
       <input type="number" class="gl-cfg-cap" value="${c.capacidade}" min="1" max="200" style="width:70px;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
       <span style="font-size:11px;color:var(--textMuted);">leitos</span>
-      <button type="button" onclick="this.closest('.gl-cfg-row').remove()" title="Remover esta especialidade" aria-label="Remover" style="background:rgba(239,68,68,0.18);color:rgba(239,68,68,1);border:1px solid rgba(239,68,68,0.45);border-radius:4px;cursor:pointer;width:24px;height:24px;font-weight:700;line-height:1;">×</button>
+      <button type="button" onclick="this.closest('.gl-cfg-row').remove(); _gestaoRepopularDropdown();" title="Remover esta especialidade" aria-label="Remover" style="background:rgba(239,68,68,0.18);color:rgba(239,68,68,1);border:1px solid rgba(239,68,68,0.45);border-radius:4px;cursor:pointer;width:24px;height:24px;font-weight:700;line-height:1;">×</button>
     </div>`).join('');
+  const optsDropdown = _gestaoMontarOpcoesDropdown();
 
   const html = `
     <div id="gl-settings-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;">
@@ -14875,7 +14886,12 @@ async function _gestaoAbrirSettings() {
         <div style="margin-bottom:18px;border-top:1px solid var(--border);padding-top:14px;">
           <label style="display:block;font-size:11px;color:var(--textMuted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">Adicionar nova especialidade</label>
           <div style="display:flex;align-items:center;gap:8px;">
-            <input type="text" id="gl-cfg-novo-nome" placeholder="Ex: Ortopedia, Clínica Médica..." maxlength="40" style="flex:2;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:4px;font-size:13px;">
+            <select id="gl-cfg-novo-select" onchange="_gestaoDropdownChange()" style="flex:2;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:4px;font-size:13px;">
+              <option value="">— escolha especialidade —</option>
+              ${optsDropdown}
+              <option value="__outros__">Outros... (digitar nova)</option>
+            </select>
+            <input type="text" id="gl-cfg-novo-nome" placeholder="Nome da nova especialidade" maxlength="40" style="flex:2;display:none;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:4px;font-size:13px;">
             <input type="number" id="gl-cfg-novo-cap" placeholder="N" min="1" max="200" style="width:70px;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:4px;font-size:13px;">
             <span style="font-size:11px;color:var(--textMuted);">leitos</span>
             <button type="button" onclick="_gestaoAddLinhaCfg()" title="Adicionar à lista" style="background:rgba(20,184,166,0.20);color:rgba(20,184,166,1);border:1px solid rgba(20,184,166,0.50);border-radius:4px;cursor:pointer;padding:5px 10px;font-size:13px;font-weight:600;">+ Adicionar</button>
@@ -14896,13 +14912,53 @@ function _gestaoFecharSettings() {
   document.getElementById('gl-settings-modal')?.remove();
 }
 
+function _gestaoMontarOpcoesDropdown() {
+  const todas = window._GESTAO_TODAS_ESPECIALIDADES || [];
+  const jaNaLista = new Set(Array.from(document.querySelectorAll('#gl-cfg-lista .gl-cfg-nome')).map(i => (i.value || '').trim().toLowerCase()).filter(Boolean));
+  const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  return todas.filter(n => !jaNaLista.has(n.toLowerCase())).map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+}
+
+function _gestaoRepopularDropdown() {
+  const sel = document.getElementById('gl-cfg-novo-select');
+  if (!sel) return;
+  const opts = _gestaoMontarOpcoesDropdown();
+  sel.innerHTML = `<option value="">— escolha especialidade —</option>${opts}<option value="__outros__">Outros... (digitar nova)</option>`;
+  sel.value = '';
+  const inp = document.getElementById('gl-cfg-novo-nome');
+  if (inp) { inp.value = ''; inp.style.display = 'none'; }
+}
+
+function _gestaoDropdownChange() {
+  const sel = document.getElementById('gl-cfg-novo-select');
+  const inp = document.getElementById('gl-cfg-novo-nome');
+  if (!sel || !inp) return;
+  if (sel.value === '__outros__') {
+    inp.style.display = '';
+    inp.value = '';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+    inp.value = '';
+  }
+}
+
 function _gestaoAddLinhaCfg() {
-  const nomeEl = document.getElementById('gl-cfg-novo-nome');
+  const sel = document.getElementById('gl-cfg-novo-select');
+  const inp = document.getElementById('gl-cfg-novo-nome');
   const capEl = document.getElementById('gl-cfg-novo-cap');
-  const nome = (nomeEl?.value || '').trim();
+  const usandoOutros = sel?.value === '__outros__';
+  let nome = '';
+  if (sel && sel.value && sel.value !== '__outros__') {
+    nome = sel.value.trim();
+  } else if (usandoOutros) {
+    nome = (inp?.value || '').trim();
+  }
   const cap = parseInt(capEl?.value, 10);
-  if (!nome) { nomeEl?.focus(); return; }
+  if (!nome) { (usandoOutros ? inp : sel)?.focus(); return; }
   if (!(cap >= 1 && cap <= 200)) { capEl?.focus(); return; }
+  const jaTem = Array.from(document.querySelectorAll('#gl-cfg-lista .gl-cfg-nome')).some(i => (i.value || '').trim().toLowerCase() === nome.toLowerCase());
+  if (jaTem) { if (typeof intToast === 'function') intToast(`"${nome}" já está na lista.`, true); return; }
   const lista = document.getElementById('gl-cfg-lista');
   if (!lista) return;
   // Remove empty state se houver
@@ -14916,11 +14972,19 @@ function _gestaoAddLinhaCfg() {
     <input type="text" class="gl-cfg-nome" value="${escHtml(nome)}" maxlength="40" style="flex:2;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
     <input type="number" class="gl-cfg-cap" value="${cap}" min="1" max="200" style="width:70px;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
     <span style="font-size:11px;color:var(--textMuted);">leitos</span>
-    <button type="button" onclick="this.closest('.gl-cfg-row').remove()" title="Remover" style="background:rgba(239,68,68,0.18);color:rgba(239,68,68,1);border:1px solid rgba(239,68,68,0.45);border-radius:4px;cursor:pointer;width:24px;height:24px;font-weight:700;line-height:1;">×</button>`;
+    <button type="button" onclick="this.closest('.gl-cfg-row').remove(); _gestaoRepopularDropdown();" title="Remover" style="background:rgba(239,68,68,0.18);color:rgba(239,68,68,1);border:1px solid rgba(239,68,68,0.45);border-radius:4px;cursor:pointer;width:24px;height:24px;font-weight:700;line-height:1;">×</button>`;
   lista.appendChild(novaLinha);
-  nomeEl.value = '';
-  capEl.value = '';
-  nomeEl.focus();
+  if (usandoOutros) {
+    const todas = window._GESTAO_TODAS_ESPECIALIDADES || [];
+    if (!todas.some(n => n.toLowerCase() === nome.toLowerCase())) {
+      todas.push(nome);
+      todas.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      window._GESTAO_TODAS_ESPECIALIDADES = todas;
+    }
+  }
+  if (capEl) capEl.value = '';
+  _gestaoRepopularDropdown();
+  sel?.focus();
 }
 
 async function _gestaoSalvarSettings() {
