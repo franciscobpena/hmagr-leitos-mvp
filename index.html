@@ -24408,7 +24408,13 @@ const DataLayer = (function() {
       const sd = (typeof KaizenSync !== 'undefined' && KaizenSync.getState && KaizenSync.getState().serverData) || null;
       if (sd && sd.projetos) sd.projetos.forEach(p => ids.add(p.id));
       if (typeof KaizenStore !== 'undefined') {
-        Object.keys(KaizenStore.getOverrides().projetos || {}).forEach(id => ids.add(id));
+        const projOvs = KaizenStore.getOverrides().projetos || {};
+        Object.keys(projOvs).forEach(id => ids.add(id));
+        // [HMAGR 2026-05-14] Filtra tombstones (_is_deleted) — necessário pra projetos MOCK
+        // que não podem ser DELETE no Supabase. Cobre exclusão via UI.
+        Object.entries(projOvs).forEach(([id, ov]) => {
+          if (ov && ov._is_deleted) ids.delete(id);
+        });
       }
       return Array.from(ids);
     },
@@ -24417,6 +24423,11 @@ const DataLayer = (function() {
      *  [HOB 2026-05-08 / HMAGR 2026-05-13] MOCK_DATA é HMSA+HMAGR-específico. HMAGR projetos
      *  começam com acoes:[] — equipe cadastra via UI. Outros hospitais (HOB/HJXXIII) só server. */
     listAcoesByProjeto(projId) {
+      // [HMAGR 2026-05-14] Se projeto tem tombstone, devolve [] direto.
+      if (typeof KaizenStore !== 'undefined') {
+        const projOv = (KaizenStore.getOverrides().projetos || {})[projId];
+        if (projOv && projOv._is_deleted) return [];
+      }
       const ids = new Set();
       // Mock (HMSA + HMAGR)
       if (typeof MOCK_DATA !== 'undefined' && typeof HOSPITAL_ID !== 'undefined' && (HOSPITAL_ID === 'HMSA' || HOSPITAL_ID === 'HMAGR')) {
@@ -25735,9 +25746,15 @@ async function confirmarExcluirProjeto(projetoId, projetoNome) {
       method: 'DELETE',
       headers
     });
-    // 3. Limpar overrides locais relacionados
+    // 3. Limpar overrides locais relacionados — [HMAGR 2026-05-14] tombstone pra projetos MOCK
+    //    (DELETE Supabase é no-op em projetos MOCK; tombstone via override garante UI respeita exclusão)
     const ovs = KaizenStore.getOverrides();
-    if (ovs.projetos && ovs.projetos[projetoId]) delete ovs.projetos[projetoId];
+    if (!ovs.projetos) ovs.projetos = {};
+    ovs.projetos[projetoId] = {
+      ...(ovs.projetos[projetoId] || {}),
+      _is_deleted: true,
+      _deleted_at: new Date().toISOString()
+    };
     Object.keys(ovs.acoes || {}).forEach(aid => {
       if (ovs.acoes[aid] && ovs.acoes[aid].origem_id === projetoId) delete ovs.acoes[aid];
     });
