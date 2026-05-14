@@ -7952,7 +7952,7 @@ async function sbPatchOptimistic(table, id, updatedAt, body, contextLabel) {
   // [Fase 57] Garante token via prompt se vazio. Cancelar = abort com erro claro.
   const token = await ensureHmsaToken();
   if (!token) {
-    if (typeof showToast === 'function') showToast('Configure o acesso pra continuar (token HMSA).', 'error');
+    if (typeof showToast === 'function') showToast('Configure o acesso pra continuar.', 'error');
     return { ok: false, conflict: false, error: 'sem token' };
   }
   try {
@@ -24602,7 +24602,7 @@ function renderAgendaLean() {
   container.innerHTML = `
     <div class="sec-title" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <i data-lucide="calendar-days" aria-hidden="true"></i>
-      <span>Agenda e biblioteca — HMSA</span>
+      <span>Agenda e biblioteca — ${HOSPITAL_ID}</span>
       ${updateInfo}
       <button class="btn btn-ghost" onclick="abrirEditarAgenda()" style="font-size:11px;padding:6px 12px" aria-label="Editar repositórios e links da agenda">
         <i data-lucide="pencil" aria-hidden="true"></i> Editar repositórios
