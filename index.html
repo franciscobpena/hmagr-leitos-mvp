@@ -25395,15 +25395,33 @@ function copiarPreworksWhatsApp() {
 
   const url = _urlDaPagina('#/preworks');
 
+  const fmtPrazoBr = iso => iso ? iso.split('-').reverse().join('/') : 'Sem prazo';
+  const sufixoTemporal = iso => {
+    if (!iso) return '';
+    const d = new Date(iso); d.setHours(0,0,0,0);
+    const diff = Math.round((d - hoje) / 86400000);
+    if (diff === 0) return ' (hoje)';
+    if (diff === 1) return ' (amanhã)';
+    return '';
+  };
+
   const linhas = [];
-  linhas.push(`*PRÉ-WORKS ${HOSPITAL_ID} · PRÓXIMA VISITA — ${dataHoje}*`);
+  // Header: título + data em itálico abaixo
+  linhas.push(`*PRÉ-WORKS ${HOSPITAL_ID} — PRÓXIMA VISITA*`);
+  linhas.push(`_Atualizado em ${dataHoje}_`);
   linhas.push('');
 
   // BLUF
   if (atrasados.length > 0) {
     linhas.push(`*AÇÃO IMEDIATA:* ${atrasados.length} ${atrasados.length === 1 ? 'item atrasado' : 'itens atrasados'}; destravar antes da próxima visita.`);
   } else if (proximos.length > 0) {
-    linhas.push(`*AÇÃO IMEDIATA:* ${proximos.length} ${proximos.length === 1 ? 'item vence' : 'itens vencem'} nos próximos 7 dias.`);
+    const datasUnicas = [...new Set(proximos.map(p => p.prazo).filter(Boolean))];
+    if (datasUnicas.length === 1) {
+      const prazoBr = fmtPrazoBr(datasUnicas[0]);
+      linhas.push(`*AÇÃO IMEDIATA:* ${proximos.length} ${proximos.length === 1 ? 'item vence' : 'itens vencem'} em ${prazoBr}${sufixoTemporal(datasUnicas[0])}`);
+    } else {
+      linhas.push(`*AÇÃO IMEDIATA:* ${proximos.length} ${proximos.length === 1 ? 'item vence' : 'itens vencem'} nos próximos 7 dias.`);
+    }
   } else if (total > 0) {
     linhas.push(`*AÇÃO IMEDIATA:* ${total} ${total === 1 ? 'item pendente' : 'itens pendentes'} sem urgência.`);
   } else {
@@ -25411,56 +25429,47 @@ function copiarPreworksWhatsApp() {
   }
   linhas.push('');
 
-  // Severity
-  linhas.push('*GRAVIDADE (Prazo)*');
-  linhas.push(`- Atrasado: *${atrasados.length}*`);
-  linhas.push(`- Vence em até 7d: *${proximos.length}*`);
-  linhas.push(`- Em prazo (>7d ou sem prazo): *${futuros.length}*`);
-  linhas.push(`- Total pendentes: *${total}*`);
-  linhas.push('');
-
-  // Contexto
-  if (total > 0) {
-    linhas.push('*CONTEXTO OPERACIONAL*');
-    linhas.push(`- % atrasados: *${pctAtrasados}%*`);
-    if (topResp) linhas.push(`- Responsável com mais itens: *${topResp[0]} (${topResp[1]})*`);
-    linhas.push('');
-  }
-
   // Layer-cake (ordenado por prazo asc dentro da faixa)
   const sortPrazo = arr => arr.slice().sort((a,b) => (a.prazo || '9999-12-31').localeCompare(b.prazo || '9999-12-31'));
   let idx = 0;
-  const renderFaixa = (label, arr) => {
+  const renderFaixa = (labelGenerico, arr, dinamica = false) => {
     if (!arr.length) return;
+    let labelFinal = labelGenerico;
+    let plural = arr.length === 1 ? 'item' : 'itens';
+    if (dinamica) {
+      const datasUnicas = [...new Set(arr.map(p => p.prazo).filter(Boolean))];
+      if (datasUnicas.length === 1) {
+        labelFinal = `VENCE EM ${fmtPrazoBr(datasUnicas[0])}`;
+        plural = arr.length === 1 ? 'ITEM' : 'ITENS';
+      }
+    }
     linhas.push(SEP);
     linhas.push('');
-    linhas.push(`*${label} — ${arr.length} ${arr.length === 1 ? 'item' : 'itens'}*`);
+    linhas.push(`*${labelFinal} — ${arr.length} ${plural}*`);
     linhas.push('');
     sortPrazo(arr).forEach(p => {
       idx++;
-      const prazoBr = p.prazo ? p.prazo.split('-').reverse().join('/') : 'Sem prazo';
-      linhas.push(`*${idx}.* ${p.titulo}`);
-      linhas.push(`    Resp: ${p.responsavel || 'Sem responsável'}`);
-      linhas.push(`    Prazo: ${prazoBr}`);
-      if (p.link) linhas.push(`    Link: ${p.link}`);
+      const prazoBr = fmtPrazoBr(p.prazo);
+      linhas.push(`*${idx}. ${p.titulo}*`);
+      linhas.push(`Resp: ${p.responsavel || 'Sem responsável'}`);
+      linhas.push(`Prazo: ${prazoBr}`);
+      if (p.link) {
+        linhas.push(`Link: ${p.link}`);
+      } else if (p.observacao) {
+        linhas.push(`_${p.observacao}_`);
+      }
       linhas.push('');
     });
   };
   renderFaixa('ATRASADO', atrasados);
-  renderFaixa('VENCE EM ATÉ 7D', proximos);
+  renderFaixa('VENCE EM ATÉ 7D', proximos, true);
   renderFaixa('EM PRAZO', futuros);
 
   if (total > 0) {
     linhas.push(SEP);
     linhas.push('');
   }
-  linhas.push('Detalhamento completo:');
-  linhas.push(url);
-  if (ag && ag.slides_url) {
-    linhas.push('');
-    linhas.push('Agenda da próxima visita:');
-    linhas.push(ag.slides_url);
-  }
+  linhas.push(`Detalhamento: ${url}`);
 
   _copiarParaWhatsApp(linhas.join('\n'), 'Mensagem de Pré-Works');
 }
