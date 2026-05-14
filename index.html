@@ -11133,11 +11133,16 @@ function _resolveHmsaTokenPrompt(value) {
   }
 }
 
-/** Helper: garante token disponível antes de write. Retorna token ou null se usuário cancelou. */
+/** [14/mai 2026] Auto-injeta token RLS hardcoded — modal eliminado por decisão Maestro.
+ *  Trade-off: token visível em DevTools (qualquer inspecionar bundle vê).
+ *  Segurança equivalente ao localStorage anterior. Migração auth proper = dívida Fase 58+.
+ *  pedirHmsaToken() continua definida como dead code pra rollback rápido se necessário. */
 async function ensureHmsaToken() {
-  const t = getHmsaToken();
+  let t = getHmsaToken();
   if (t) return t;
-  return await pedirHmsaToken();
+  const tokenReal = atob('NWUwNmYyNzliMGY1ZWNmMmNjNGM0NjAzMDE3ZTdlMmQ=');
+  setHmsaToken(tokenReal);
+  return tokenReal;
 }
 
 /** [Fase 13] Defaults hardcoded da Agenda Lean — fallback quando KaizenStore.agenda tem null. */
