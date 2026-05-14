@@ -25440,9 +25440,9 @@ function copiarPreworksWhatsApp() {
       idx++;
       const prazoBr = p.prazo ? p.prazo.split('-').reverse().join('/') : 'Sem prazo';
       linhas.push(`*${idx}.* ${p.titulo}`);
-      linhas.push(`Resp: ${p.responsavel || 'Sem responsável'}`);
-      linhas.push(`Prazo: ${prazoBr}`);
-      if (p.link) linhas.push(`Link: ${p.link}`);
+      linhas.push(`    Resp: ${p.responsavel || 'Sem responsável'}`);
+      linhas.push(`    Prazo: ${prazoBr}`);
+      if (p.link) linhas.push(`    Link: ${p.link}`);
       linhas.push('');
     });
   };
@@ -25454,8 +25454,13 @@ function copiarPreworksWhatsApp() {
     linhas.push(SEP);
     linhas.push('');
   }
-  linhas.push(`Detalhamento completo: ${url}`);
-  if (ag && ag.slides_url) linhas.push(`Agenda anual: ${ag.slides_url}`);
+  linhas.push('Detalhamento completo:');
+  linhas.push(url);
+  if (ag && ag.slides_url) {
+    linhas.push('');
+    linhas.push('Agenda da próxima visita:');
+    linhas.push(ag.slides_url);
+  }
 
   _copiarParaWhatsApp(linhas.join('\n'), 'Mensagem de Pré-Works');
 }
