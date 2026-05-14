@@ -9590,7 +9590,7 @@ async function exportPPT() {
     pptx.layout  = 'LAYOUT_WIDE';   // 13.33" × 7.5"
     pptx.author  = 'Francisco Bahia Pena';
     pptx.company = 'PROADI-SUS Lean nas Emergências';
-    pptx.subject = 'Gestão de Leitos HMSA';
+    pptx.subject = `Gestão de Leitos — ${HOSPITAL_ID}`;
     pptx.title   = `Gestão de Leitos — ${HOSPITAL_ID}`;
 
     // Helper: rodapé padrão em cada slide
@@ -9600,7 +9600,7 @@ async function exportPPT() {
       slide.addText(
         `${dateStr}  ·  Gatilho LP ≥ ${t}d${extra ? '  ·  '+extra : ''}`,
         { x:0.4, y:7.0, w:10, h:0.35, fontSize:8, color:C.muted, fontFace:'Calibri' });
-      slide.addText('HMSA · PROADI-SUS',
+      slide.addText(`${HOSPITAL_ID} · PROADI-SUS`,
         { x:10, y:7.0, w:3.0, h:0.35, fontSize:8, color:C.muted, fontFace:'Calibri', align:'right' });
     }
 
@@ -14286,7 +14286,7 @@ async function exportarFilaXLS() {
     }));
     const data = new Date().toISOString().slice(0, 10);
     if (typeof _downloadXLS === 'function') {
-      _downloadXLS(rows, `fila-internacoes-HMSA-${data}.xls`, 'Fila Internações');
+      _downloadXLS(rows, `fila-internacoes-${HOSPITAL_ID}-${data}.xls`, 'Fila Internações');
       if (typeof showToast === 'function') showToast(`${rows.length} pacientes exportados.`, 'success');
     } else {
       console.error('[Onda5] _downloadXLS helper não disponível');
@@ -19643,7 +19643,7 @@ function whatsappBoarding() {
   };
 
   const linhas = [];
-  linhas.push(`*BOARDING HMSA*`);
+  linhas.push(`*BOARDING ${HOSPITAL_ID}*`);
   linhas.push(`Atualizado: ${dataStr} ${horaStr}`);
   linhas.push(`Acompanhamento: ${url}`);
   linhas.push(SEP);
@@ -19983,7 +19983,7 @@ function exportarInternacoesXLS() {
     'Atualizado em':        fmtDateTime(i.updated_at)
   }));
   const data = new Date().toISOString().slice(0, 10);
-  _downloadXLS(rows, `internacoes-HMSA-${data}.xls`, 'Internações');
+  _downloadXLS(rows, `internacoes-${HOSPITAL_ID}-${data}.xls`, 'Internações');
   showToast(`${rows.length} internações exportadas (${Object.keys(rows[0]).length} colunas).`, 'success');
 }
 
@@ -20907,7 +20907,7 @@ function exportarIndicadoresXLS() {
     return row;
   });
   const data = new Date().toISOString().slice(0, 10);
-  _downloadXLS(rows, `indicadores-HMSA-${data}.xls`, 'Indicadores');
+  _downloadXLS(rows, `indicadores-${HOSPITAL_ID}-${data}.xls`, 'Indicadores');
   showToast(`${rows.length} indicadores exportados.`, 'success');
 }
 // Compat: alias antigo continua funcionando
@@ -20935,7 +20935,7 @@ function exportarPlanoAcaoXLS() {
     };
   });
   const data = new Date().toISOString().slice(0, 10);
-  _downloadXLS(rows, `barreiras-alta-HMSA-${data}.xls`, 'Barreiras pra Alta');
+  _downloadXLS(rows, `barreiras-alta-${HOSPITAL_ID}-${data}.xls`, 'Barreiras pra Alta');
   showToast(`${rows.length} ações exportadas.`, 'success');
 }
 // Compat: alias antigo continua funcionando se algo chamar
@@ -20978,7 +20978,7 @@ function copiarPlanoAcaoWhatsApp() {
   const topBarreira = Object.entries(barCount).sort((a,b) => b[1] - a[1])[0];
 
   const linhas = [];
-  linhas.push(`*BARREIRAS PRA ALTA HMSA — ${dataHoje}*`);
+  linhas.push(`*BARREIRAS PRA ALTA ${HOSPITAL_ID} — ${dataHoje}*`);
   linhas.push('');
 
   // BLUF
@@ -25102,8 +25102,15 @@ function excluirFerramenta(idx) {
 
 const PREWORK_STATUS_LABEL = { pendente: 'Pendente', em_andamento: 'Em andamento', concluido: 'Concluído' };
 
-/** [Fase 43] URL canônica do deploy. Usada em mensagens WhatsApp pra apontar pra view de origem. */
-const HMSA_BASE_URL = 'https://hmsa-leitos.vercel.app/';
+/** [Fase 43] URL canônica do deploy. Usada em mensagens WhatsApp pra apontar pra view de origem.
+ *  [14/mai 2026] Multi-tenant: cada hospital aponta pra seu próprio deploy. Anti-leak HMSA. */
+const _HOSPITAL_URLS = {
+  'HOB':     'https://hob-leitos.vercel.app/',
+  'HJXXIII': 'https://hjxxiii-leitos.vercel.app/',
+  'HMAGR':   'https://hmagr-leitos.vercel.app/',
+  'HMSA':    'https://hmsa-leitos.vercel.app/'
+};
+const HMSA_BASE_URL = _HOSPITAL_URLS[HOSPITAL_ID] || 'https://hmsa-leitos.vercel.app/';
 
 /** [Fase 43] Monta URL da página a partir do hash (ex: '#/kaizens') — usada em mensagens WhatsApp. */
 function _urlDaPagina(hash) {
