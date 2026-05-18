@@ -7832,11 +7832,15 @@ body.is-edit-focus [data-edit-focus] {
         <label>Barreira principal</label>
         <select id="f-barreira">
           <option value="">— selecionar —</option>
-          <option value="Clínica">Clínica — exame, procedimento, parecer, medicação</option>
-          <option value="Social">Social — familiar, abrigo, documentação</option>
-          <option value="Regulação">Regulação — vaga, transferência, retaguarda</option>
-          <option value="Administrativa">Administrativa — autorização, convênio, material</option>
-          <option value="Judicial">Judicial — decisão judicial, curatela</option>
+          <option value="Aguardando transferência">Aguardando transferência — vaga, SUS Fácil, regulação</option>
+          <option value="Pendência social">Pendência social — família, abrigo, CRAS-CREAS-CAPS</option>
+          <option value="Interconsulta pendente">Interconsulta pendente — parecer especialista</option>
+          <option value="Pendência de laboratório">Pendência de laboratório — exame, TAT desviante</option>
+          <option value="Pendência de imagem">Pendência de imagem — agendamento ou laudo</option>
+          <option value="Pendência de procedimento">Pendência de procedimento — mapa cirúrgico, intervenção</option>
+          <option value="Decisão clínica pendente">Decisão clínica pendente — visita ou plano não documentado</option>
+          <option value="Pendência terapêutica">Pendência terapêutica — ATB IV→VO, farmácia clínica</option>
+          <option value="Outros (especificar)">Outros (especificar) — definir no detalhe</option>
           <option value="Sem barreira">Sem barreira — alta planejada, seguindo protocolo</option>
         </select>
       </div>
@@ -7844,11 +7848,15 @@ body.is-edit-focus [data-edit-focus] {
         <label>Barreira adicional <span style="color:var(--textMuted);font-size:10px">(opcional, paciente pode ter mais de uma)</span></label>
         <select id="f-barreira-2">
           <option value="">— nenhuma —</option>
-          <option value="Clínica">Clínica — exame, procedimento, parecer, medicação</option>
-          <option value="Social">Social — familiar, abrigo, documentação</option>
-          <option value="Regulação">Regulação — vaga, transferência, retaguarda</option>
-          <option value="Administrativa">Administrativa — autorização, convênio, material</option>
-          <option value="Judicial">Judicial — decisão judicial, curatela</option>
+          <option value="Aguardando transferência">Aguardando transferência — vaga, SUS Fácil, regulação</option>
+          <option value="Pendência social">Pendência social — família, abrigo, CRAS-CREAS-CAPS</option>
+          <option value="Interconsulta pendente">Interconsulta pendente — parecer especialista</option>
+          <option value="Pendência de laboratório">Pendência de laboratório — exame, TAT desviante</option>
+          <option value="Pendência de imagem">Pendência de imagem — agendamento ou laudo</option>
+          <option value="Pendência de procedimento">Pendência de procedimento — mapa cirúrgico, intervenção</option>
+          <option value="Decisão clínica pendente">Decisão clínica pendente — visita ou plano não documentado</option>
+          <option value="Pendência terapêutica">Pendência terapêutica — ATB IV→VO, farmácia clínica</option>
+          <option value="Outros (especificar)">Outros (especificar) — definir no detalhe</option>
           <option value="Sem barreira">Sem barreira — alta planejada, seguindo protocolo</option>
         </select>
       </div>
@@ -7856,11 +7864,15 @@ body.is-edit-focus [data-edit-focus] {
         <label>Barreira adicional <span style="color:var(--textMuted);font-size:10px">(opcional)</span></label>
         <select id="f-barreira-3">
           <option value="">— nenhuma —</option>
-          <option value="Clínica">Clínica — exame, procedimento, parecer, medicação</option>
-          <option value="Social">Social — familiar, abrigo, documentação</option>
-          <option value="Regulação">Regulação — vaga, transferência, retaguarda</option>
-          <option value="Administrativa">Administrativa — autorização, convênio, material</option>
-          <option value="Judicial">Judicial — decisão judicial, curatela</option>
+          <option value="Aguardando transferência">Aguardando transferência — vaga, SUS Fácil, regulação</option>
+          <option value="Pendência social">Pendência social — família, abrigo, CRAS-CREAS-CAPS</option>
+          <option value="Interconsulta pendente">Interconsulta pendente — parecer especialista</option>
+          <option value="Pendência de laboratório">Pendência de laboratório — exame, TAT desviante</option>
+          <option value="Pendência de imagem">Pendência de imagem — agendamento ou laudo</option>
+          <option value="Pendência de procedimento">Pendência de procedimento — mapa cirúrgico, intervenção</option>
+          <option value="Decisão clínica pendente">Decisão clínica pendente — visita ou plano não documentado</option>
+          <option value="Pendência terapêutica">Pendência terapêutica — ATB IV→VO, farmácia clínica</option>
+          <option value="Outros (especificar)">Outros (especificar) — definir no detalhe</option>
           <option value="Sem barreira">Sem barreira — alta planejada, seguindo protocolo</option>
         </select>
       </div>
@@ -8216,6 +8228,8 @@ async function loadBarreiraAcoesRef() {
         acao: r.sugestao_acao,
         responsavel: r.sugestao_responsavel,
         prioridade: r.prioridade,
+        criterio_escalonamento: r.criterio_escalonamento || null,
+        hospital: r.hospital || null,
       });
     });
     barreiraAcoesRef = map;
@@ -8235,9 +8249,13 @@ document.addEventListener('change', (e) => {
 
     // Só sugere se campo estiver vazio (não sobrescreve o que usuário digitou)
     if (barreira && barreiraAcoesRef[barreira]) {
-      const sugestao = barreiraAcoesRef[barreira][0];  // prioridade 1
+      // Prefere entry hospital-scoped (HMSA_HMAGR); senão pega prioridade 1 legacy
+      const entries = barreiraAcoesRef[barreira];
+      const sugestao = entries.find(s => s.hospital === 'HMSA_HMAGR') || entries[0];
       if (acaoField && !acaoField.value.trim()) {
-        acaoField.value = sugestao.acao;
+        acaoField.value = sugestao.criterio_escalonamento
+          ? `${sugestao.acao}\nEscalonamento: ${sugestao.criterio_escalonamento}`
+          : sugestao.acao;
         hint.style.display = 'inline';
         setTimeout(() => { hint.style.display = 'none'; }, 4000);
       }
@@ -8678,12 +8696,23 @@ const WARD_COLORS = {
 /* [Fase 47] Descrição completa das barreiras de alta — usada em tooltips e PPT.
    Single source of truth: bate com as opções do <select id="f-barreira"> no modal. */
 const BARREIRA_DESC = {
-  'Clínica':        'Clínica — exame, procedimento, parecer, medicação',
-  'Social':         'Social — familiar, abrigo, documentação',
-  'Regulação':      'Regulação — vaga, transferência, retaguarda',
-  'Administrativa': 'Administrativa — autorização, convênio, material',
-  'Judicial':       'Judicial — decisão judicial, curatela',
-  'Sem barreira':   'Sem barreira — alta planejada, seguindo protocolo'
+  // Taxonomia nova v6.1 (HMSA + HMAGR · Mai/2026)
+  'Aguardando transferência':  'Aguardando transferência — vaga, SUS Fácil, regulação',
+  'Pendência social':          'Pendência social — família, abrigo, CRAS-CREAS-CAPS',
+  'Interconsulta pendente':    'Interconsulta pendente — parecer especialista',
+  'Pendência de laboratório':  'Pendência de laboratório — exame, TAT desviante',
+  'Pendência de imagem':       'Pendência de imagem — agendamento ou laudo',
+  'Pendência de procedimento': 'Pendência de procedimento — mapa cirúrgico, intervenção',
+  'Decisão clínica pendente':  'Decisão clínica pendente — visita ou plano não documentado',
+  'Pendência terapêutica':     'Pendência terapêutica — ATB IV→VO, farmácia clínica',
+  'Outros (especificar)':      'Outros (especificar) — definir no detalhe',
+  'Sem barreira':              'Sem barreira — alta planejada, seguindo protocolo',
+  // Legacy v6.0 (histórico — actions migradas mas tooltip preservado caso apareça)
+  'Clínica':        'Clínica (legacy) — exame, procedimento, parecer, medicação',
+  'Social':         'Social (legacy) — familiar, abrigo, documentação',
+  'Regulação':      'Regulação (legacy) — vaga, transferência, retaguarda',
+  'Administrativa': 'Administrativa (legacy) — autorização, convênio, material',
+  'Judicial':       'Judicial (legacy) — decisão judicial, curatela'
 };
 function _barreiraDesc(b) { return (b && BARREIRA_DESC[b]) || b || ''; }
 
