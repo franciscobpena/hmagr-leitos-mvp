@@ -6569,8 +6569,8 @@ body.is-edit-focus [data-edit-focus] {
         <input type="number" id="lp-trigger" name="lp-trigger" min="1" max="90" value="9" inputmode="numeric">
         <span>dias</span>
       </div>
-      <select id="ward-filter" title="Filtrar por especialidade clínica">
-        <option value="">Especialidade: todas</option>
+      <select id="ward-filter" title="Filtrar por ala/setor">
+        <option value="">Setor: todos</option>
       </select>
       <button class="btn btn-ghost" onclick="reloadData()" title="Atualizar dados" aria-label="Atualizar dados"><i aria-hidden="true" data-lucide="refresh-cw"></i></button>
     </div>
@@ -8321,10 +8321,10 @@ const wardSel = document.getElementById('ward-filter');
 wardSel.addEventListener('change', () => renderAll(wardSel.value || null));
 
 function populateWardFilter() {
-  // [Fase 55] Filtro agora é por especialidade (alinhado ao agrupamento do heatmap)
-  const especs = [...new Set(allPatients.map(p => (p.especialidade || '').toString().trim().toUpperCase()).filter(Boolean))].sort();
-  wardSel.innerHTML = '<option value="">Especialidade: todas</option>';
-  especs.forEach(w => {
+  // [HMAGR 2026-05-18] Filtro agrupa por setor/ala (config_gestao_leitos), alinhado ao groupBy do heatmap
+  const setores = [...new Set(allPatients.map(p => (p.setor || '').toString().trim().toUpperCase()).filter(Boolean))].sort();
+  wardSel.innerHTML = '<option value="">Setor: todos</option>';
+  setores.forEach(w => {
     const o = document.createElement('option');
     o.value = w; o.textContent = w;
     wardSel.appendChild(o);
@@ -8592,8 +8592,9 @@ function updateHeader() {
    RENDER ALL
 ═══════════════════════════════════════════════════════════ */
 function renderAll(wardFilter) {
+  // [HMAGR 2026-05-18] Filtra por setor (alinhado ao groupBy do heatmap)
   const filtered = wardFilter
-    ? allPatients.filter(p => ((p.especialidade || '').toString().trim().toUpperCase()) === wardFilter)
+    ? allPatients.filter(p => ((p.setor || '').toString().trim().toUpperCase()) === wardFilter)
     : allPatients;
 
   renderKPIs(allPatients);
@@ -8685,20 +8686,24 @@ function renderLegend() {
 ═══════════════════════════════════════════════════════════ */
 const WARD_ORDER  = ['Ortopedia','Clinica Medica','Clínica Médica','Neuro/Tórax/Vascular','CirGeral/Bucomaxilo'];
 const WARD_COLORS = {
+  // [HMAGR 2026-05-18] Cards agrupam por setor (config_gestao_leitos), não mais por especialidade.
+  // Cores das 3 alas HMAGR (Trauma 1/2 + Cirúrgica 2) em UPPERCASE pra match com map keys do heatmap.
+  'CLÍNICA DO TRAUMA 1':  '#60A5FA',
+  'CLÍNICA DO TRAUMA 2':  '#818CF8',
+  'CLÍNICA CIRÚRGICA 2':  '#FB923C',
+  // Legado (preservado pra evitar quebrar HMSA/HOB caso este arquivo seja referenciado em comparativos):
   'Ortopedia':            '#60A5FA',
   'Clinica Medica':       '#34D399',
   'Clínica Médica':       '#34D399',
   'Neuro/Tórax/Vascular': '#A78BFA',
   'CirGeral/Bucomaxilo':  '#FB923C',
-  // [HMAGR PDF 2026-05-12] Clone padrão HOB
-  // [HMAGR 2026-05-13 port HOB] Adicionado Neuro + Vascular separados (HOB 13/05 fez split):
-  // mantém 'Neurovascular' legado pra não quebrar cards que ainda usam esse setor.
   'Neurovascular':        '#A78BFA',
   'Neuro':                '#A78BFA',
   'Vascular':             '#06B6D4',
   'Cirurgia':             '#FB923C',
   'Comanejo':             '#64748B',
   'Sem especialidade':    '#94A3B8',
+  'Sem setor':            '#94A3B8',
 };
 
 /* [Fase 47] Descrição completa das barreiras de alta — usada em tooltips e PPT.
@@ -8747,25 +8752,27 @@ function _barreirasResumo(obj) {
 function renderHeatmap(pts) {
   const t = getT();
   // [Fase 47] Aplica overrides EGA/NIR (correção manual sobre OCR) + filtra soft-deleted.
-  // [Fase 55] Agrupamento mudou de p.setor (físico) pra p.especialidade (clínico).
+  // [HMAGR 2026-05-18] Agrupamento agora é por p.setor (alinhado a config_gestao_leitos.nome_categoria).
+  //   Decisão Maestro: 3 cards "Clínica do Trauma 1/2 + Cirúrgica 2" por ALA, não por especialidade clínica.
+  //   bed-card individual continua mostrando p.especialidade (info clínica preservada).
   pts = _aplicarLeitoOverridesBatch(pts);
 
-  // [HOB 2026-05-08] Categorias configuradas via Settings ⚙ aparecem como cards mesmo sem paciente.
-  // Mapping: nome em UPPERCASE pra match com agrupamento de especialidade. Capacidade pra preencher leitos livres.
+  // [HOB 2026-05-08 · HMAGR 2026-05-18] Categorias config_gestao_leitos aparecem como cards mesmo sem paciente.
+  // Mapping: nome_categoria em UPPERCASE pra match com setor dos pacientes. Capacidade pra preencher leitos livres.
   const cfgCats = (typeof _GESTAO_LEITOS_CATEGORIAS !== 'undefined' && Array.isArray(_GESTAO_LEITOS_CATEGORIAS)) ? _GESTAO_LEITOS_CATEGORIAS : [];
   const capPorCat = {};
   cfgCats.forEach(c => { capPorCat[c.nome_categoria.toUpperCase()] = c.capacidade; });
 
   if (pts.length === 0 && cfgCats.length === 0) {
     document.getElementById('heatmap-container').innerHTML =
-      '<div class="loading-msg">Nenhum dado para exibir. Configure especialidades via ⚙ Configurar ou cadastre internações ativas pela aba Internações.</div>';
+      '<div class="loading-msg">Nenhum dado para exibir. Configure alas via ⚙ Configurar ou cadastre internações ativas pela aba Internações.</div>';
     return;
   }
 
-  // [Fase 55] Agrupar por especialidade
+  // [HMAGR 2026-05-18] Agrupar por setor (não mais por especialidade)
   const map = {};
   pts.forEach(p => {
-    const w = (p.especialidade || 'Sem especialidade').toString().trim().toUpperCase();
+    const w = (p.setor || 'Sem setor').toString().trim().toUpperCase();
     if (!map[w]) map[w] = [];
     map[w].push(p);
   });
@@ -21491,12 +21498,12 @@ setInterval(() => {
 }, REFRESH_MS);
 
 // [v5.9 / Fase 55.5] Re-render leve a cada 60s pra atualizar "X min" do frescor.
-// [Fase 55.1] groupBy agora é especialidade (não p.setor).
+// [HMAGR 2026-05-18] groupBy é setor (revertido de Fase 55.1 que era especialidade).
 setInterval(() => {
   if (currentView === 'gestao-leitos' && currentSubView === 'dashboard' && allPatients.length > 0 && !_isAnyOverlayOpen()) {
     const wardFilter = wardSel.value;
     renderHeatmap(wardFilter
-      ? allPatients.filter(p => ((p.especialidade || '').toString().trim().toUpperCase()) === wardFilter)
+      ? allPatients.filter(p => ((p.setor || '').toString().trim().toUpperCase()) === wardFilter)
       : allPatients);
   }
 }, 60 * 1000);
