@@ -7800,7 +7800,7 @@ body.is-edit-focus [data-edit-focus] {
   </div>
 </div>
 
-<div id="modal-overlay" onclick="closeOnOverlay(event)">
+<div id="modal-overlay">
   <div id="modal-box" onclick="event.stopPropagation()">
     <div class="modal-hdr">
       <div>
@@ -8243,19 +8243,32 @@ document.addEventListener('change', (e) => {
     const hint      = document.getElementById('f-acao-hint');
 
     // Só sugere se campo estiver vazio (não sobrescreve o que usuário digitou)
+    // [Fase 67.2] Marca campos como rastreáveis (uma vez): qualquer input manual seta dataset.userEdited='1'.
+    // Auto-fill reseta a '0'. Ao trocar barreira, substitui SE flag !== '1' (vazio ou auto-fill prévio).
+    [acaoField, respField].forEach(f => {
+      if (f && !f._tracked) {
+        f.addEventListener('input', () => { f.dataset.userEdited = '1'; });
+        f._tracked = true;
+      }
+    });
+
     if (barreira && barreiraAcoesRef[barreira]) {
       // Prefere entry hospital-scoped (HMSA_HMAGR); senão pega prioridade 1 legacy
       const entries = barreiraAcoesRef[barreira];
       const sugestao = entries.find(s => s.hospital === 'HMSA_HMAGR') || entries[0];
-      if (acaoField && !acaoField.value.trim()) {
+      const podeSubstituirAcao = acaoField && (acaoField.dataset.userEdited !== '1' || !acaoField.value.trim());
+      if (podeSubstituirAcao) {
         acaoField.value = sugestao.criterio_escalonamento
           ? `${sugestao.acao}\nEscalonamento: ${sugestao.criterio_escalonamento}`
           : sugestao.acao;
+        acaoField.dataset.userEdited = '0';
         hint.style.display = 'inline';
         setTimeout(() => { hint.style.display = 'none'; }, 4000);
       }
-      if (respField && !respField.value.trim() && sugestao.responsavel) {
+      const podeSubstituirResp = respField && sugestao.responsavel && (respField.dataset.userEdited !== '1' || !respField.value.trim());
+      if (podeSubstituirResp) {
         respField.value = sugestao.responsavel;
+        respField.dataset.userEdited = '0';
       }
     }
   }
@@ -9173,8 +9186,14 @@ function openModal(idx, opts) {
   const fb2 = document.getElementById('f-barreira-2'); if (fb2) fb2.value = ann?.barreira_2 || '';
   const fb3 = document.getElementById('f-barreira-3'); if (fb3) fb3.value = ann?.barreira_3 || '';
   document.getElementById('f-detalhe').value     = ann?.detalhe     || '';
-  document.getElementById('f-acao').value        = ann?.acao        || '';
-  document.getElementById('f-responsavel').value = ann?.responsavel || '';
+  const _fAcao = document.getElementById('f-acao');
+  const _fResp = document.getElementById('f-responsavel');
+  _fAcao.value = ann?.acao || '';
+  _fResp.value = ann?.responsavel || '';
+  // [Fase 67.2] Flag de edição manual: se ann já tem ação/resp, considera editado (não sobrescreve ao trocar barreira).
+  // Em modo nova ação (vazio), flag começa '0' → primeiro auto-fill preenche.
+  _fAcao.dataset.userEdited = ann?.acao        ? '1' : '0';
+  _fResp.dataset.userEdited = ann?.responsavel ? '1' : '0';
   document.getElementById('f-prazo').value       = ann?.prazo       || '';
   // Em modo nova ação, esconde botões de manipular ann anterior (não há)
   document.getElementById('btn-clear-ann').style.display = (!isNovaAcao && ann) ? 'block' : 'none';
@@ -9213,9 +9232,19 @@ function closeModal() {
   }
 }
 
-function closeOnOverlay(e) {
-  if (e.target === document.getElementById('modal-overlay')) closeModal();
-}
+// [Fase 67.2] Click-outside robusto: só fecha se mousedown E mouseup em overlay direto.
+// Evita close acidental quando user inicia drag dentro do modal-content e solta na borda do overlay,
+// ou quando dropdown native do <select> dispara mouseup em layer fora do DOM normal.
+(function setupOverlayClose() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+  let mouseDownOnOverlay = false;
+  overlay.addEventListener('mousedown', (e) => { mouseDownOnOverlay = (e.target === overlay); });
+  overlay.addEventListener('mouseup',   (e) => {
+    if (mouseDownOnOverlay && e.target === overlay) closeModal();
+    mouseDownOnOverlay = false;
+  });
+})();
 
 /* ═══════════════════════════════════════════════════════════
    [Fase 47] Editar leito (correção EGA/NIR sobre dado OCR)
