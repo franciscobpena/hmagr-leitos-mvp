@@ -2142,7 +2142,13 @@ footer {
 .kaizen-card.s-em_atraso             { border-left-color: var(--red); }
 .kaizen-card.s-concluido             { border-left-color: var(--blue); }
 
-/* [Fase 67] Gradients removidos por overengineering — border-left já comunica status (anti-regressão visual conforme padrão Frente 1 minimalista 13/mai) */
+/* [HMAGR+HMSA 2026-05-18] Background sólido por status (substitui gradient removido em Patch 67.1
+   por overengineering — agora é fill sólido, não gradient). Texto WCAG já dimensionado abaixo:
+   em_atraso/concluido = branco; risco_atraso/em_andamento = escuro #0A1628. */
+.kaizen-card.s-em_atraso     { background: var(--red);   border-left-color: var(--red); }
+.kaizen-card.s-risco_atraso  { background: var(--amber); border-left-color: var(--amber); }
+.kaizen-card.s-em_andamento  { background: var(--green); border-left-color: var(--green); }
+.kaizen-card.s-concluido     { background: var(--blue);  border-left-color: var(--blue); }
 .kaizen-card.s-estacionamento_ideias { background: var(--cardAlt); border-left-color: var(--gray-hold); opacity: .85; }
 /* [Fase 46] Card de projeto encerrado oficialmente: opacidade reduzida + badge cantonal */
 .kaizen-card.is-concluido-oficial { opacity: 0.6; position: relative; }
