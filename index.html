@@ -2142,12 +2142,7 @@ footer {
 .kaizen-card.s-em_atraso             { border-left-color: var(--red); }
 .kaizen-card.s-concluido             { border-left-color: var(--blue); }
 
-/* [Fase 5] Cards full-color por status */
-.kaizen-card.s-em_atraso        { background: linear-gradient(135deg, var(--red), color-mix(in srgb, var(--red) 70%, var(--bg))); border-left-color: var(--red); }
-.kaizen-card.s-risco_atraso     { background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 70%, var(--bg))); border-left-color: var(--amber); }
-/* [Fase 46] Em andamento = verde (saudável). Concluído = azul (todos 100%, pronto p/ encerrar). */
-.kaizen-card.s-em_andamento     { background: linear-gradient(135deg, var(--green), color-mix(in srgb, var(--green) 65%, var(--bg))); border-left-color: var(--green); }
-.kaizen-card.s-concluido        { background: linear-gradient(135deg, #2563EB, color-mix(in srgb, #2563EB 65%, var(--bg))); border-left-color: #2563EB; }
+/* [Fase 67] Gradients removidos por overengineering — border-left já comunica status (anti-regressão visual conforme padrão Frente 1 minimalista 13/mai) */
 .kaizen-card.s-estacionamento_ideias { background: var(--cardAlt); border-left-color: var(--gray-hold); opacity: .85; }
 /* [Fase 46] Card de projeto encerrado oficialmente: opacidade reduzida + badge cantonal */
 .kaizen-card.is-concluido-oficial { opacity: 0.6; position: relative; }
