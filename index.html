@@ -8243,32 +8243,32 @@ document.addEventListener('change', (e) => {
     const hint      = document.getElementById('f-acao-hint');
 
     // Só sugere se campo estiver vazio (não sobrescreve o que usuário digitou)
-    // [Fase 67.2] Marca campos como rastreáveis (uma vez): qualquer input manual seta dataset.userEdited='1'.
-    // Auto-fill reseta a '0'. Ao trocar barreira, substitui SE flag !== '1' (vazio ou auto-fill prévio).
-    [acaoField, respField].forEach(f => {
-      if (f && !f._tracked) {
-        f.addEventListener('input', () => { f.dataset.userEdited = '1'; });
-        f._tracked = true;
-      }
-    });
-
     if (barreira && barreiraAcoesRef[barreira]) {
       // Prefere entry hospital-scoped (HMSA_HMAGR); senão pega prioridade 1 legacy
       const entries = barreiraAcoesRef[barreira];
       const sugestao = entries.find(s => s.hospital === 'HMSA_HMAGR') || entries[0];
-      const podeSubstituirAcao = acaoField && (acaoField.dataset.userEdited !== '1' || !acaoField.value.trim());
+      const novoValorAcao = sugestao.criterio_escalonamento
+        ? `${sugestao.acao}\nEscalonamento: ${sugestao.criterio_escalonamento}`
+        : sugestao.acao;
+      // [Fase 67.3] Substitui se: vazio OU valor atual === último auto-fill (sem edição manual).
+      // Edição manual diverge do snapshot → preserva. Snapshot atualiza a cada auto-fill.
+      const podeSubstituirAcao = acaoField && (
+        !acaoField.value.trim() ||
+        acaoField.value === acaoField.dataset.autoFilledValue
+      );
       if (podeSubstituirAcao) {
-        acaoField.value = sugestao.criterio_escalonamento
-          ? `${sugestao.acao}\nEscalonamento: ${sugestao.criterio_escalonamento}`
-          : sugestao.acao;
-        acaoField.dataset.userEdited = '0';
+        acaoField.value = novoValorAcao;
+        acaoField.dataset.autoFilledValue = novoValorAcao;
         hint.style.display = 'inline';
         setTimeout(() => { hint.style.display = 'none'; }, 4000);
       }
-      const podeSubstituirResp = respField && sugestao.responsavel && (respField.dataset.userEdited !== '1' || !respField.value.trim());
+      const podeSubstituirResp = respField && sugestao.responsavel && (
+        !respField.value.trim() ||
+        respField.value === respField.dataset.autoFilledValue
+      );
       if (podeSubstituirResp) {
         respField.value = sugestao.responsavel;
-        respField.dataset.userEdited = '0';
+        respField.dataset.autoFilledValue = sugestao.responsavel;
       }
     }
   }
@@ -9190,10 +9190,11 @@ function openModal(idx, opts) {
   const _fResp = document.getElementById('f-responsavel');
   _fAcao.value = ann?.acao || '';
   _fResp.value = ann?.responsavel || '';
-  // [Fase 67.2] Flag de edição manual: se ann já tem ação/resp, considera editado (não sobrescreve ao trocar barreira).
-  // Em modo nova ação (vazio), flag começa '0' → primeiro auto-fill preenche.
-  _fAcao.dataset.userEdited = ann?.acao        ? '1' : '0';
-  _fResp.dataset.userEdited = ann?.responsavel ? '1' : '0';
+  // [Fase 67.3] Snapshot do último auto-fill. Em modo edição com ação salva, NÃO snapshot
+  // (delete) → value !== autoFilledValue → preserva. Em modo nova ação (vazio), value=''
+  // bate com qualquer auto-fill posterior → substitui ao trocar barreira.
+  delete _fAcao.dataset.autoFilledValue;
+  delete _fResp.dataset.autoFilledValue;
   document.getElementById('f-prazo').value       = ann?.prazo       || '';
   // Em modo nova ação, esconde botões de manipular ann anterior (não há)
   document.getElementById('btn-clear-ann').style.display = (!isNovaAcao && ann) ? 'block' : 'none';
