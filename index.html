@@ -10290,7 +10290,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_sala_decisao', 'proj_hmagr_caracterizacao_boarding', 'proj_hmagr_ucp']
+      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_sala_decisao', 'proj_hmagr_ucp']
     },
     {
       id: 'ind_los_com_internacao',
@@ -10304,7 +10304,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_bloco_cirurgico', 'proj_hmagr_altas_oportunas_10', 'proj_hmagr_sala_decisao', 'proj_hmagr_caracterizacao_boarding', 'proj_hmagr_ucp']
+      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_altas_oportunas_10', 'proj_hmagr_sala_decisao', 'proj_hmagr_ucp']
     },
     {
       id: 'ind_los_sem_internacao',
@@ -10332,7 +10332,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_altas_oportunas_10', 'proj_hmagr_sala_decisao', 'proj_hmagr_caracterizacao_boarding', 'proj_hmagr_ucp']
+      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_altas_oportunas_10', 'proj_hmagr_sala_decisao', 'proj_hmagr_ucp']
     },
     {
       id: 'ind_fator_utilizacao',
@@ -10346,7 +10346,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_bloco_cirurgico', 'proj_hmagr_altas_oportunas_10']
+      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_daily_huddle', 'proj_hmagr_altas_oportunas_10']
     },
     {
       id: 'ind_setup_leitos',
@@ -10360,7 +10360,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_bloco_cirurgico', 'proj_hmagr_altas_oportunas_10']
+      projetos_vinculados: ['proj_hmagr_intervalo_am_ah', 'proj_hmagr_setup_leitos', 'proj_hmagr_altas_oportunas_10']
     },
     {
       id: 'ind_numero_kaizens',
@@ -10374,7 +10374,7 @@ const MOCK_INDICADORES = {
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
-      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_daily_huddle', 'proj_hmagr_bloco_cirurgico', 'proj_hmagr_sala_decisao', 'proj_hmagr_caracterizacao_boarding', 'proj_hmagr_ucp']
+      projetos_vinculados: ['proj_hmagr_baixo_risco_fluxo', 'proj_hmagr_ambientes_hosp', 'proj_hmagr_daily_huddle', 'proj_hmagr_sala_decisao', 'proj_hmagr_ucp']
     }
   ]
 };
@@ -10430,10 +10430,10 @@ const MOCK_PROJETOS = {
     { id: 'proj_hmagr_ambientes_hosp',        raia: 'passagem',   nome: 'Sinalização e Padronização Ambientes Hosp', responsavel: null, ordem: 3,  acoes: [], indicadores_vinculados: ['ind_los_sem_internacao', 'ind_los_com_internacao', 'ind_nedocs', 'ind_numero_kaizens'] },
     { id: 'proj_hmagr_setup_leitos',          raia: 'saida',      nome: 'Setup de Leitos',                          responsavel: null, ordem: 4,  acoes: [], indicadores_vinculados: ['ind_setup_leitos', 'ind_fator_utilizacao', 'ind_tmp_origem_ps', 'ind_nedocs'] },
     { id: 'proj_hmagr_daily_huddle',          raia: 'governanca', nome: 'Implementação Daily Huddle',               responsavel: null, ordem: 5,  acoes: [], indicadores_vinculados: ['ind_numero_kaizens', 'ind_nedocs', 'ind_tmp_origem_ps', 'ind_fator_utilizacao'] },
-    { id: 'proj_hmagr_bloco_cirurgico',       raia: 'governanca', nome: 'Indicadores Bloco Cirúrgico',              responsavel: null, ordem: 6,  acoes: [], indicadores_vinculados: ['ind_fator_utilizacao', 'ind_los_com_internacao', 'ind_setup_leitos', 'ind_numero_kaizens'] },
+    // [HMAGR 2026-05-18] Removidos do MOCK pós-tentativa Maestro de excluir: proj_hmagr_bloco_cirurgico, proj_hmagr_caracterizacao_boarding.
+    //   Causa raiz reportada: DELETE Supabase era no-op (MOCK só) + tombstone falhava em caminhos de erro. Fix definitivo = remover do MOCK.
     { id: 'proj_hmagr_altas_oportunas_10',    raia: 'saida',      nome: 'Altas Oportunas até as 10:00',             responsavel: null, ordem: 7,  acoes: [], indicadores_vinculados: ['ind_tmp_origem_ps', 'ind_fator_utilizacao', 'ind_setup_leitos', 'ind_los_com_internacao'] },
     { id: 'proj_hmagr_sala_decisao',          raia: 'passagem',   nome: 'Otimização Sala de Decisão',               responsavel: null, ordem: 8,  acoes: [], indicadores_vinculados: ['ind_tmp_origem_ps', 'ind_los_com_internacao', 'ind_nedocs', 'ind_numero_kaizens'] },
-    { id: 'proj_hmagr_caracterizacao_boarding', raia: 'governanca', nome: 'Caracterização do Boarding',             responsavel: null, ordem: 9,  acoes: [], indicadores_vinculados: ['ind_nedocs', 'ind_tmp_origem_ps', 'ind_los_com_internacao', 'ind_numero_kaizens'] },
     { id: 'proj_hmagr_ucp',                   raia: 'passagem',   nome: 'Implementação Unidade de Curta Permanência', responsavel: null, ordem: 10, acoes: [], indicadores_vinculados: ['ind_los_com_internacao', 'ind_tmp_origem_ps', 'ind_nedocs', 'ind_numero_kaizens'] }
   ]
 };
@@ -26057,41 +26057,49 @@ function _ddCriarNovaAcao(projetoId) {
 async function confirmarExcluirProjeto(projetoId, projetoNome) {
   if (!isEditAuthed()) { requireEditAuth(() => confirmarExcluirProjeto(projetoId, projetoNome)); return; }
   if (!confirm('Tem certeza que quer descartar o projeto "' + projetoNome + '"?\n\nTodas as ações vinculadas serão removidas. Essa ação NÃO pode ser desfeita via UI.')) return;
+
+  // [HMAGR 2026-05-18 fix exclusão] Tombstone-first via API oficial. Garante que UI respeita
+  // exclusão mesmo se fetches Supabase falharem (auth/rede/projeto MOCK sem registro server).
+  // Substitui hack anterior `getOverrides()` retornava clone deep — mutação não persistia
+  // confiavelmente quando combinada com {..._schema_version: 5} (inconsistência com v7 atual).
   try {
-    // 1. Deletar ações no Supabase (via API REST direta)
-    const headers = { ...SB_H, 'X-HMSA-Token': HMSA_TOKEN };
-    await fetch(SB_URL + '/rest/v1/acoes_kaizen?origem_id=eq.' + encodeURIComponent(projetoId), {
-      method: 'DELETE',
-      headers
-    });
-    // 2. Deletar projeto
-    await fetch(SB_URL + '/rest/v1/projetos_kaizen?id=eq.' + encodeURIComponent(projetoId), {
-      method: 'DELETE',
-      headers
-    });
-    // 3. Limpar overrides locais relacionados — [HMAGR 2026-05-14] tombstone pra projetos MOCK
-    //    (DELETE Supabase é no-op em projetos MOCK; tombstone via override garante UI respeita exclusão)
-    const ovs = KaizenStore.getOverrides();
-    if (!ovs.projetos) ovs.projetos = {};
-    ovs.projetos[projetoId] = {
-      ...(ovs.projetos[projetoId] || {}),
+    KaizenStore.saveProjetoOverride(projetoId, {
       _is_deleted: true,
       _deleted_at: new Date().toISOString()
-    };
-    Object.keys(ovs.acoes || {}).forEach(aid => {
-      if (ovs.acoes[aid] && ovs.acoes[aid].origem_id === projetoId) delete ovs.acoes[aid];
     });
-    localStorage.setItem(KAIZEN_STORE_KEY, JSON.stringify({ ...ovs, _schema_version: 5 }));
-    // 4. Re-bootstrap pra refletir
-    await KaizenSync.bootstrap();
-    // 5. Fechar drawer + propagar via event bus (Fase 24)
-    if (typeof closeDrawer === 'function') closeDrawer();
-    afterAcaoMutation(projetoId, 'projeto');
-    showToast('Projeto "' + projetoNome + '" excluído com sucesso.', 'success');
-  } catch (err) {
-    console.error('[excluir projeto]', err);
-    showToast('Não foi possível excluir. Tente novamente.', 'error');
+  } catch (e) {
+    console.error('[excluir projeto] tombstone falhou:', e);
+    showToast('Erro ao marcar projeto como removido. Recarregue a página.', 'error');
+    return;
   }
+
+  // Best-effort: deletar acoes + projeto no server. No-op em projetos MOCK (sem registro server).
+  // Erros aqui NÃO desfazem o tombstone — UI já respeita exclusão.
+  try {
+    const headers = { ...SB_H, 'X-HMSA-Token': HMSA_TOKEN };
+    await fetch(SB_URL + '/rest/v1/acoes_kaizen?origem_id=eq.' + encodeURIComponent(projetoId), { method: 'DELETE', headers });
+    await fetch(SB_URL + '/rest/v1/projetos_kaizen?id=eq.' + encodeURIComponent(projetoId), { method: 'DELETE', headers });
+  } catch (err) {
+    console.warn('[excluir projeto] DELETE server best-effort falhou (tombstone já aplicado):', err);
+  }
+
+  // Limpar overrides de ações filhas via API oficial
+  try {
+    const ovs = KaizenStore.getOverrides();
+    Object.keys(ovs.acoes || {}).forEach(aid => {
+      if (ovs.acoes[aid] && ovs.acoes[aid].origem_id === projetoId) {
+        if (typeof KaizenStore.removeAcaoOverride === 'function') KaizenStore.removeAcaoOverride(aid);
+      }
+    });
+  } catch (e) {
+    console.warn('[excluir projeto] limpar acoes filhas falhou:', e);
+  }
+
+  // Re-bootstrap + render
+  try { await KaizenSync.bootstrap(); } catch (e) { console.warn('[excluir projeto] bootstrap:', e); }
+  if (typeof closeDrawer === 'function') closeDrawer();
+  afterAcaoMutation(projetoId, 'projeto');
+  showToast('Projeto "' + projetoNome + '" excluído com sucesso.', 'success');
 }
 
 /** [Fase 14 / Fase 24] Excluir ação (soft delete via deleted_at) + propaga via event bus. */
