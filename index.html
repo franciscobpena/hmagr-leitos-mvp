@@ -2150,6 +2150,48 @@ footer {
 .kaizen-card.s-em_andamento  { background: var(--green); border-left-color: var(--green); }
 .kaizen-card.s-concluido     { background: var(--blue);  border-left-color: var(--blue); }
 .kaizen-card.s-estacionamento_ideias { background: var(--cardAlt); border-left-color: var(--gray-hold); opacity: .85; }
+
+/* [HMAGR 2026-05-18] Popover Meta S.M.A.R.T. acionado por hover no kaizen-card. Hover bridge:
+   listeners no próprio popover cancelam timer de hide quando mouse entra (vide JS _kcMetaShow). */
+#kc-meta-pop {
+  position: fixed;
+  z-index: 10000;
+  max-width: 360px;
+  min-width: 220px;
+  background: var(--cardAlt);
+  border: 1px solid rgba(13, 148, 136, 0.45);
+  border-left: 3px solid var(--teal);
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.45;
+  display: none;
+  pointer-events: auto;
+}
+#kc-meta-pop.open { display: block; }
+#kc-meta-pop .kc-meta-head {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--teal);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#kc-meta-pop .kc-meta-body {
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#kc-meta-pop .kc-meta-body.empty {
+  color: var(--textMuted);
+  font-style: italic;
+  font-size: 11px;
+}
 /* [Fase 46] Card de projeto encerrado oficialmente: opacidade reduzida + badge cantonal */
 .kaizen-card.is-concluido-oficial { opacity: 0.6; position: relative; }
 .kaizen-card.is-concluido-oficial:hover { opacity: 0.85; }
@@ -22842,6 +22884,62 @@ function renderAderencia() {
 /** [Fase 8 D3] State global para toggle de projetos arquivados na matriz. */
 let _mostrarArquivados = false;
 
+/* ═══════════════════════════════════════════════════════════
+   [HMAGR 2026-05-18] Popover Meta S.M.A.R.T. acionado por hover
+   no kaizen-card. Singleton no body, hover bridge com timer 120ms.
+   Padrão consistente com memória hover-bridge-popover-pattern.
+═══════════════════════════════════════════════════════════ */
+let _kcMetaTimer = null;
+function _kcMetaEnsureEl() {
+  let el = document.getElementById('kc-meta-pop');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'kc-meta-pop';
+  el.setAttribute('role', 'tooltip');
+  el.innerHTML = '<div class="kc-meta-head"><i aria-hidden="true" data-lucide="target" style="width:11px;height:11px"></i> Meta S.M.A.R.T.</div><div class="kc-meta-body"></div>';
+  el.addEventListener('mouseenter', () => {
+    if (_kcMetaTimer) { clearTimeout(_kcMetaTimer); _kcMetaTimer = null; }
+  });
+  el.addEventListener('mouseleave', () => _kcMetaHideDelayed());
+  document.body.appendChild(el);
+  return el;
+}
+function _kcMetaShow(cardEl) {
+  if (_kcMetaTimer) { clearTimeout(_kcMetaTimer); _kcMetaTimer = null; }
+  const pop = _kcMetaEnsureEl();
+  const meta = (cardEl && cardEl.dataset && cardEl.dataset.metaSmart) || '';
+  const bodyEl = pop.querySelector('.kc-meta-body');
+  if (meta && meta.trim()) {
+    bodyEl.textContent = meta;
+    bodyEl.classList.remove('empty');
+  } else {
+    bodyEl.textContent = 'Meta ainda não cadastrada — clique no card pra abrir e definir (Específica, Mensurável, Atingível, Relevante, com prazo).';
+    bodyEl.classList.add('empty');
+  }
+  pop.classList.add('open');
+  if (typeof refreshIcons === 'function') refreshIcons();
+  // Posicionar à direita do card; se faltar espaço, vai pra esquerda; se sair embaixo, sobe.
+  const rect = cardEl.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight, gap = 8;
+  let x = rect.right + gap;
+  let y = rect.top;
+  if (x + popRect.width > vw - 10) x = rect.left - popRect.width - gap;
+  if (x < 10) x = 10;
+  if (y + popRect.height > vh - 10) y = vh - popRect.height - 10;
+  if (y < 10) y = 10;
+  pop.style.left = x + 'px';
+  pop.style.top  = y + 'px';
+}
+function _kcMetaHideDelayed() {
+  if (_kcMetaTimer) clearTimeout(_kcMetaTimer);
+  _kcMetaTimer = setTimeout(() => {
+    const pop = document.getElementById('kc-meta-pop');
+    if (pop) pop.classList.remove('open');
+    _kcMetaTimer = null;
+  }, 120);
+}
+
 /** [Fase 8 D3] Determina se projeto está "arquivável" (concluido há >90 dias).
  *  Considera: todas ações concluídas + última updated_at > 90d. */
 function _isProjetoArquivado(projeto) {
@@ -22965,7 +23063,7 @@ function renderKaizenMatriz() {
       const prazoEfetivo = (typeof _prazoEfetivoProjeto === 'function') ? _prazoEfetivoProjeto(p) : null;
       const prazoLabel = prazoEfetivo ? new Date(prazoEfetivo).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
       return `
-        <a class="kaizen-card s-${status}${oficialClass}" href="#/kaizens/${p.id}" title="Ver detalhes de ${_pNomeEsc}" aria-label="Ver detalhes do projeto ${_pNomeEsc}">
+        <a class="kaizen-card s-${status}${oficialClass}" href="#/kaizens/${p.id}" aria-label="Ver detalhes do projeto ${_pNomeEsc}" data-meta-smart="${escapeHtml(p.meta_smart || '')}" onmouseenter="_kcMetaShow(this)" onmouseleave="_kcMetaHideDelayed()">
           ${oficialBadge}
           <div class="titulo">${_pNomeEsc}</div>
           <span class="status-pill s-${status}">${statusLabel(status)}</span>
