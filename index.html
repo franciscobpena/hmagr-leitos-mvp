@@ -3934,6 +3934,49 @@ footer {
   border-color: var(--teal);
 }
 #acao-modal .modal-body textarea { resize: vertical; min-height: 60px; font-family: 'DM Sans', sans-serif; }
+
+/* [HMAGR 2026-05-18] Checklist items dentro do modal Plano de Ação */
+.cl-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: background 120ms;
+}
+.cl-item:hover { background: rgba(255,255,255,0.06); }
+.cl-item input[type="checkbox"] {
+  width: 16px !important; height: 16px !important;
+  margin: 0 !important;
+  accent-color: var(--teal);
+  cursor: pointer; flex-shrink: 0;
+}
+.cl-item .cl-text {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  color: var(--text);
+  font-size: 13px;
+  padding: 2px 4px !important;
+  outline: none;
+  min-height: auto !important;
+}
+.cl-item.is-done .cl-text { color: var(--textMuted); text-decoration: line-through; }
+.cl-item .cl-rm {
+  background: transparent; border: none; color: var(--textMuted);
+  cursor: pointer; padding: 2px 6px; line-height: 1;
+}
+.cl-item .cl-rm:hover { color: var(--red); }
+/* Badge progresso na tabela de planos de ação */
+.cl-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(20,184,166,0.15); color: var(--teal);
+  font-size: 10px; font-weight: 600;
+  padding: 2px 6px; border-radius: 8px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.cl-badge.is-complete { background: rgba(34,197,94,0.15); color: var(--green); }
 /* [Fase 46] Checkboxes dentro do modal não devem herdar width:100% (regra global de input). */
 #acao-modal .modal-body input[type="checkbox"],
 #acao-modal .modal-body input[type="radio"] {
@@ -7879,6 +7922,17 @@ body.is-edit-focus [data-edit-focus] {
         <label>Ação pactuada <span id="f-acao-hint" style="color:var(--teal);font-size:10px;font-weight:500;display:none">· <i aria-hidden="true" data-lucide="lightbulb"></i> sugestão aplicada (edite à vontade)</span></label>
         <textarea id="f-acao" name="acao" placeholder="Ex: Contatar regulação municipal hoje às 14h" autocomplete="off"></textarea>
       </div>
+      <!-- [HMAGR 2026-05-18] Checklist opcional pra sub-tarefas da ação. Persiste em actions.checklist (JSONB). -->
+      <div class="form-group">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>Checklist <span style="color:var(--textMuted);font-size:10px;font-weight:400">(opcional · sub-tarefas pra acompanhar progresso)</span></span>
+          <span id="f-checklist-progress" style="color:var(--teal);font-size:11px;font-weight:600;display:none"></span>
+        </label>
+        <div id="f-checklist-items" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px"></div>
+        <button type="button" class="btn btn-ghost" onclick="addChecklistItem()" style="font-size:11px;padding:4px 8px;align-self:flex-start;display:inline-flex;align-items:center;gap:4px">
+          <i aria-hidden="true" data-lucide="plus" style="width:13px;height:13px"></i> Adicionar item
+        </button>
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label>Responsável</label>
@@ -8302,6 +8356,7 @@ async function loadSupabaseAnnotations() {
           responsavel: row.responsavel,
           prazo:       row.prazo,
           status_acao: row.status_acao,
+          checklist:   Array.isArray(row.checklist) ? row.checklist : null, // [HMAGR 2026-05-18]
           timestamp:   row.updated_at,
         };
       }
@@ -9203,6 +9258,11 @@ function openModal(idx, opts) {
   delete _fAcao.dataset.autoFilledValue;
   delete _fResp.dataset.autoFilledValue;
   document.getElementById('f-prazo').value       = ann?.prazo       || '';
+  // [HMAGR 2026-05-18] Popular checklist state (deep clone pra não mutar cache)
+  window._checklistState = Array.isArray(ann?.checklist)
+    ? ann.checklist.map(it => ({ ...it }))
+    : [];
+  if (typeof renderChecklistFromState === 'function') renderChecklistFromState();
   // Em modo nova ação, esconde botões de manipular ann anterior (não há)
   document.getElementById('btn-clear-ann').style.display = (!isNovaAcao && ann) ? 'block' : 'none';
   const hasAction = !isNovaAcao && ann && ann.action_id;
@@ -9425,6 +9485,84 @@ function _restaurarLeito(idEpisodio) {
   abrirItensOcultados(); // re-render lista
 }
 
+/* ═══════════════════════════════════════════════════════════
+   [HMAGR 2026-05-18] Checklist state + handlers
+   State global window._checklistState (zerado a cada openModal).
+   Persistência: ann.checklist é serializado em saveAnnotation
+   (JSONB nullable na tabela actions). Card externo renderActionPlan
+   mostra badge "☑ X/Y" calculado a partir da mesma fonte.
+═══════════════════════════════════════════════════════════ */
+function renderChecklistFromState() {
+  const items = Array.isArray(window._checklistState) ? window._checklistState : [];
+  const container = document.getElementById('f-checklist-items');
+  if (!container) return;
+  container.innerHTML = items.map((it, i) => `
+    <div class="cl-item${it.done ? ' is-done' : ''}" data-idx="${i}">
+      <input type="checkbox" ${it.done?'checked':''} onchange="toggleChecklistItem(${i})" aria-label="Marcar item ${i+1} como concluído">
+      <input type="text" class="cl-text" value="${escapeHtml(it.texto||'')}" oninput="updateChecklistText(${i}, this.value)" placeholder="Sub-tarefa..." aria-label="Texto do item ${i+1}">
+      <button type="button" class="cl-rm" onclick="removeChecklistItem(${i})" title="Remover item" aria-label="Remover item ${i+1}"><i aria-hidden="true" data-lucide="trash-2" style="width:13px;height:13px"></i></button>
+    </div>
+  `).join('');
+  const badge = document.getElementById('f-checklist-progress');
+  if (badge) {
+    if (items.length === 0) {
+      badge.style.display = 'none';
+    } else {
+      const done = items.filter(it => it && it.done).length;
+      badge.style.display = '';
+      badge.textContent = `✓ ${done}/${items.length} (${Math.round(done/items.length*100)}%)`;
+      badge.style.color = (done === items.length) ? 'var(--green)' : 'var(--teal)';
+    }
+  }
+  if (typeof refreshIcons === 'function') refreshIcons();
+}
+
+function addChecklistItem() {
+  if (!Array.isArray(window._checklistState)) window._checklistState = [];
+  window._checklistState.push({
+    id:    'cl_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+    texto: '',
+    done:  false,
+    ordem: window._checklistState.length,
+  });
+  renderChecklistFromState();
+  // Foca o input recém-criado pra digitação imediata
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#f-checklist-items .cl-text');
+    const last = inputs[inputs.length - 1];
+    if (last) last.focus();
+  }, 30);
+}
+
+function toggleChecklistItem(idx) {
+  if (!window._checklistState || !window._checklistState[idx]) return;
+  const it = window._checklistState[idx];
+  it.done = !it.done;
+  if (it.done) it.marked_at = new Date().toISOString();
+  else delete it.marked_at;
+  renderChecklistFromState();
+}
+
+function updateChecklistText(idx, value) {
+  // Atualiza state sem re-render (preservar foco no input)
+  if (!window._checklistState || !window._checklistState[idx]) return;
+  window._checklistState[idx].texto = value;
+  // Atualiza apenas o badge progresso (sem re-render full)
+  const items = window._checklistState;
+  const badge = document.getElementById('f-checklist-progress');
+  if (badge && items.length > 0) {
+    const done = items.filter(it => it && it.done).length;
+    badge.textContent = `✓ ${done}/${items.length} (${Math.round(done/items.length*100)}%)`;
+  }
+}
+
+function removeChecklistItem(idx) {
+  if (!Array.isArray(window._checklistState)) return;
+  window._checklistState.splice(idx, 1);
+  window._checklistState.forEach((it, i) => { it.ordem = i; });
+  renderChecklistFromState();
+}
+
 async function saveAnnotation() {
   if (!modalKey) return;
   const p = allPatients[modalIdx];
@@ -9432,6 +9570,19 @@ async function saveAnnotation() {
 
   // [v5.9.2] Guard de autenticação EGA
   if (!(await requireEgaAuth())) return;
+
+  // [HMAGR 2026-05-18] Normaliza checklist state pra payload: filtra items vazios + reordena
+  const _clNorm = Array.isArray(window._checklistState)
+    ? window._checklistState
+        .map((it, i) => ({
+          id:    it.id || ('cl_' + Date.now() + '_' + i),
+          texto: (it.texto || '').trim(),
+          done:  !!it.done,
+          ordem: i,
+          ...(it.done && it.marked_at ? { marked_at: it.marked_at } : {}),
+        }))
+        .filter(it => it.texto.length > 0)
+    : [];
 
   const ann = {
     hipotese:    document.getElementById('f-hipotese').value.trim()    || null,
@@ -9443,6 +9594,7 @@ async function saveAnnotation() {
     acao:        document.getElementById('f-acao').value.trim()        || null,
     responsavel: document.getElementById('f-responsavel').value.trim() || null,
     prazo:       document.getElementById('f-prazo').value              || null,
+    checklist:   _clNorm.length > 0 ? _clNorm : null,
     timestamp:   new Date().toISOString(),
   };
 
@@ -9499,6 +9651,7 @@ async function saveAnnotation() {
           acao:       ann.acao,
           responsavel:ann.responsavel,
           prazo:      ann.prazo,
+          checklist:  ann.checklist, // [HMAGR 2026-05-18] JSONB nullable
           criado_por: 'equipe',
           status_acao:'em_andamento',  // [HOB 2026-05-08] EGA cria já em andamento (eliminava 1 click manual)
         }),
@@ -20860,9 +21013,18 @@ function renderAPTable(filtered) {
     const barreiraCell = r.count
       ? `<span class="status-badge pendente" title="${escapeHtml(r.tooltip)}">${escapeHtml(r.tag)}</span>`
       : '<span style="color:var(--textMuted)">—</span>';
+    // [HMAGR 2026-05-18] Badge progresso do checklist (☑ X/Y) quando ação tem sub-tarefas
+    const _cl = Array.isArray(a.checklist) ? a.checklist : [];
+    let _clBadge = '';
+    if (_cl.length > 0) {
+      const _done = _cl.filter(it => it && it.done).length;
+      const _complete = _done === _cl.length;
+      const _tooltip = _cl.map(it => `${it.done ? '☑' : '☐'} ${(it.texto || '').slice(0,80)}`).join('\n');
+      _clBadge = ` <span class="cl-badge${_complete ? ' is-complete' : ''}" title="${escapeHtml(_tooltip)}">☑ ${_done}/${_cl.length}</span>`;
+    }
     return `<tr class="${rowCls}">
       <td>${barreiraCell}</td>
-      <td style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(a.acao || '').replace(/"/g,'&quot;')}">${a.acao||'—'}</td>
+      <td style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(a.acao || '').replace(/"/g,'&quot;')}">${a.acao||'—'}${_clBadge}</td>
       <td class="td-muted">${a.responsavel||'—'}</td>
       <td style="${prazoStyle}">${prazoFmt}</td>
       <td><span class="status-badge ${eff}">${STATUS_LABEL[eff]||eff}</span></td>
