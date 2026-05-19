@@ -14665,17 +14665,21 @@ async function _atualizarBadgesNavTabs() {
   }
   const retNomes = (typeof AB !== 'undefined' && AB.cadastro && AB.cadastro.retaguardaNomes) || [];
   const retNomesIn = retNomes.length ? `&setor=not.in.(${retNomes.map(n => `"${n}"`).join(',')})` : '';
+  // [HMAGR 2026-05-19 CC#13] Badge tab Retaguarda PS: count pacientes alocados em setores Retaguarda (positivo do retNomesIn).
+  const retNomesInPos = retNomes.length ? `&setor=in.(${retNomes.map(n => `"${n}"`).join(',')})` : null;
   const filtroBoarding = '&boarding_origem_id=is.null';
 
-  const [nBoarding, nLista] = await Promise.all([
+  const [nBoarding, nLista, nRetag] = await Promise.all([
     fetchCount(`${SB_URL}/rest/v1/boarding_episodios?hospital_id=eq.${HOSP}&data_entrada=eq.${hoje}&select=id`),
-    fetchCount(`${SB_URL}/rest/v1/internacoes_hmsa?hospital=eq.${HOSP}&status_internacao=eq.ativa${filtroBoarding}${retNomesIn}&select=id`)
+    fetchCount(`${SB_URL}/rest/v1/internacoes_hmsa?hospital=eq.${HOSP}&status_internacao=eq.ativa${filtroBoarding}${retNomesIn}&select=id`),
+    retNomesInPos ? fetchCount(`${SB_URL}/rest/v1/internacoes_hmsa?hospital=eq.${HOSP}&status_internacao=eq.ativa${retNomesInPos}&select=id`) : Promise.resolve(null)
   ]);
   if (nBoarding !== null) setBadge('boarding', nBoarding);
   if (nLista !== null) {
     setBadge('internacoes', nLista);
     setBadge('gestao-leitos', nLista);
   }
+  if (nRetag !== null) setBadge('retaguarda-ps', nRetag);
 }
 
 /** [Entrega 2 — 2026-05-07] Renderiza fila Retaguarda PS — pacientes vindos de Boarding
