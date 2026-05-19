@@ -8912,7 +8912,13 @@ function renderHeatmap(pts) {
       const ann = getAnn(p);
       // [Fase 55.5] PNA removido — carga cognitiva sem ganho operacional.
       const isLP= d > t;
-      const idx = allPatients.indexOf(p);
+      // [2026-05-19 CC#11] Fix bug openModal não abrir pra pacientes com leito_override.
+      // _aplicarLeitoOverridesBatch retorna CLONE quando há override (linha 8283), então
+      // allPatients.indexOf(p_clone) = -1 → openModal(-1) → allPatients[-1] undefined → return silencioso.
+      // Lookup por idEpisodio resolve sem mudar contrato de openModal/template.
+      const idx = p.idEpisodio
+        ? allPatients.findIndex(x => x.idEpisodio === p.idEpisodio)
+        : allPatients.indexOf(p);
 
       // [Fase 8 WD-3] Bed-card como <button> p/ acessibilidade (foco via Tab + Enter/Space).
       // [Fase 47] Badge OV indica leito com override EGA/NIR. Botão lápis no canto abre modal de correção.
