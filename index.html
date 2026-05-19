@@ -23082,6 +23082,9 @@ function renderKaizenMatriz() {
       const totalAcoes  = p.acoes.length;
       const concluidas  = p.acoes.filter(a => a.status === 'concluido').length;
       const respLabel   = p.responsavel ? escapeHtml(p.responsavel) : placeholderEditavel('— responsável');
+      // [HMAGR 2026-05-19 CC#12] Expor corresponsavel inline com responsavel via "/". DataLayer já mescla override→server→mock. 4/10 projetos HMAGR Supabase têm corresp preenchido. Drilldown linha 24528 já editava; só o card matriz omitia.
+      const corrLabel   = p.corresponsavel ? escapeHtml(p.corresponsavel) : '';
+      const respCorrHtml = corrLabel ? `<span title="Responsável / Corresponsável">${respLabel} / ${corrLabel}</span>` : `<span>${respLabel}</span>`;
       const adDisplay   = ad.total === 0 ? '—' : ad.pct + '% aderência';
       const _pNomeEsc   = escapeHtml(p.nome);
       // [Fase 46] Card recebe classe extra quando concluído oficialmente (badge + dim)
@@ -23100,7 +23103,7 @@ function renderKaizenMatriz() {
           <div class="titulo">${_pNomeEsc}</div>
           <span class="status-pill s-${status}">${statusLabel(status)}</span>
           <div class="meta">
-            <span>${respLabel}</span>
+            ${respCorrHtml}
             <span>${concluidas}/${totalAcoes} concluídas</span>
           </div>
           <div class="meta">
