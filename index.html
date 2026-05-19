@@ -15554,18 +15554,21 @@ async function _retagAbrirSettings() {
   const lpDefault = (lpAtual >= 1 && lpAtual <= 7) ? lpAtual : 3;
 
   const escHtml = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  const setoresInputs = setores.map(s => `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <label style="flex:1;font-size:13px;">${escHtml(s.nome_setor)}</label>
-      <input type="number" id="setting-cap-${escHtml(s.nome_setor)}" data-setor="${escHtml(s.nome_setor)}" value="${s.capacidade}" min="1" max="50" style="width:70px;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
+  // [2026-05-19 CC#11] Paridade funcional com _gestaoAbrirSettings: cada linha agora é editável
+  // (rename), removível (× button) e adicionável (form abaixo). Cap range 1-50 preservado.
+  const linhasHtml = setores.map(s => `
+    <div class="rt-cfg-row" data-original-nome="${escHtml(s.nome_setor)}" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <input type="text" class="rt-cfg-nome" value="${escHtml(s.nome_setor)}" maxlength="40" style="flex:2;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
+      <input type="number" class="rt-cfg-cap" value="${s.capacidade}" min="1" max="50" style="width:70px;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
       <span style="font-size:11px;color:var(--textMuted);">leitos</span>
+      <button type="button" onclick="this.closest('.rt-cfg-row').remove();" title="Remover esta unidade" aria-label="Remover" style="background:rgba(239,68,68,0.18);color:rgba(239,68,68,1);border:1px solid rgba(239,68,68,0.45);border-radius:4px;cursor:pointer;width:24px;height:24px;font-weight:700;line-height:1;">×</button>
     </div>`).join('');
 
   const html = `
     <div id="retag-settings-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;">
-      <div style="background:var(--surface,#1E293B);padding:24px;border-radius:12px;max-width:480px;width:92%;border:1px solid rgba(148,163,184,0.20);max-height:90vh;overflow-y:auto;">
+      <div style="background:var(--surface,#1E293B);padding:24px;border-radius:12px;max-width:560px;width:92%;border:1px solid rgba(148,163,184,0.20);max-height:90vh;overflow-y:auto;">
         <h3 style="margin:0 0 4px 0;font-size:18px;color:var(--textPrimary,#F1F5F9);">Configurar ${_RETAG_LABEL}</h3>
-        <div style="font-size:12px;color:var(--textMuted,#94A3B8);margin-bottom:18px;">Ajuste o nome da unidade no seu hospital, o limite de permanência e a capacidade física de cada local.</div>
+        <div style="font-size:12px;color:var(--textMuted,#94A3B8);margin-bottom:18px;">Ajuste o nome da unidade, o limite de permanência e cadastre as unidades (renomear, remover ou adicionar). Capacidade pode ser real ou virtual.</div>
 
         <div style="margin-bottom:18px;">
           <label style="display:block;font-size:11px;color:var(--textMuted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Nome dessa unidade no seu hospital</label>
@@ -15582,19 +15585,61 @@ async function _retagAbrirSettings() {
           <div style="font-size:11px;color:var(--textMuted);margin-top:4px;font-style:italic;">Pacientes acima do limite ficam vermelhos piscando. Range 1-7 dias. Default: 3.</div>
         </div>
 
-        <div style="margin-bottom:18px;">
-          <label style="display:block;font-size:11px;color:var(--textMuted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">Capacidade de cada unidade</label>
-          ${setoresInputs}
-          <div style="font-size:11px;color:var(--textMuted);margin-top:4px;font-style:italic;">Quantos leitos físicos cada unidade tem.</div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:11px;color:var(--textMuted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">Unidades configuradas</label>
+          <div id="rt-cfg-lista">
+            ${linhasHtml || '<div style="font-size:12px;color:var(--textMuted);font-style:italic;padding:8px 0;">Nenhuma unidade cadastrada ainda.</div>'}
+          </div>
         </div>
 
-        <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <div style="margin-bottom:18px;border-top:1px solid var(--border);padding-top:14px;">
+          <label style="display:block;font-size:11px;color:var(--textMuted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">Adicionar nova unidade</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="text" id="rt-cfg-novo-nome" placeholder="Nome da nova unidade" maxlength="40" style="flex:2;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:4px;font-size:13px;">
+            <input type="number" id="rt-cfg-novo-cap" placeholder="N" min="1" max="50" style="width:70px;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:4px;font-size:13px;">
+            <span style="font-size:11px;color:var(--textMuted);">leitos</span>
+            <button type="button" onclick="_retagAddLinhaCfg()" title="Adicionar à lista" style="background:rgba(20,184,166,0.20);color:rgba(20,184,166,1);border:1px solid rgba(20,184,166,0.50);border-radius:4px;cursor:pointer;padding:5px 10px;font-size:13px;font-weight:600;">+ Adicionar</button>
+          </div>
+          <div style="font-size:11px;color:var(--textMuted);margin-top:5px;font-style:italic;">Ex: Observação 3, UDC, Sala de Decisão. Salve no fim do modal pra persistir.</div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:14px;">
           <button type="button" onclick="_retagFecharSettings()" style="background:transparent;color:var(--textMuted,#94A3B8);border:1px solid rgba(148,163,184,0.30);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;">Cancelar</button>
           <button type="button" onclick="_retagSalvarSettings()" style="background:rgba(20,184,166,0.85);color:#fff;border:1px solid rgba(20,184,166,1);padding:9px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(20,184,166,0.35);">Salvar</button>
         </div>
       </div>
     </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// [2026-05-19 CC#11] Paridade com _gestaoAddLinhaCfg. Adiciona nova rt-cfg-row à lista a partir
+// do input texto livre + capacidade. Valida duplicata case-insensitive.
+function _retagAddLinhaCfg() {
+  const inp = document.getElementById('rt-cfg-novo-nome');
+  const capEl = document.getElementById('rt-cfg-novo-cap');
+  const nome = (inp?.value || '').trim();
+  const cap = parseInt(capEl?.value, 10);
+  if (!nome) { inp?.focus(); return; }
+  if (!(cap >= 1 && cap <= 50)) { capEl?.focus(); return; }
+  const jaTem = Array.from(document.querySelectorAll('#rt-cfg-lista .rt-cfg-nome')).some(i => (i.value || '').trim().toLowerCase() === nome.toLowerCase());
+  if (jaTem) { if (typeof intToast === 'function') intToast(`"${nome}" já está na lista.`, true); return; }
+  const lista = document.getElementById('rt-cfg-lista');
+  if (!lista) return;
+  if (lista.querySelector('div[style*="font-style:italic"]')) lista.innerHTML = '';
+  const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const novaLinha = document.createElement('div');
+  novaLinha.className = 'rt-cfg-row';
+  novaLinha.dataset.originalNome = '';
+  novaLinha.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+  novaLinha.innerHTML = `
+    <input type="text" class="rt-cfg-nome" value="${escHtml(nome)}" maxlength="40" style="flex:2;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
+    <input type="number" class="rt-cfg-cap" value="${cap}" min="1" max="50" style="width:70px;background:var(--bg,#0a0f1a);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:13px;">
+    <span style="font-size:11px;color:var(--textMuted);">leitos</span>
+    <button type="button" onclick="this.closest('.rt-cfg-row').remove();" title="Remover" style="background:rgba(239,68,68,0.18);color:rgba(239,68,68,1);border:1px solid rgba(239,68,68,0.45);border-radius:4px;cursor:pointer;width:24px;height:24px;font-weight:700;line-height:1;">×</button>`;
+  lista.appendChild(novaLinha);
+  inp.value = '';
+  capEl.value = '';
+  inp?.focus();
 }
 
 function _retagFecharSettings() {
@@ -15650,38 +15695,88 @@ async function _retagSalvarSettings() {
     return;
   }
 
-  // 2) Capacidades — PATCH config_retaguarda_ps por setor
+  // 2) Setores — INSERT/DELETE/PATCH/RENAME config_retaguarda_ps. Paridade com _gestaoSalvarSettings.
+  // [2026-05-19 CC#11] Lê rt-cfg-row em vez de [id^="setting-cap-"], suporta CRUD completo.
   const userName = ((typeof getUserName === 'function' && getUserName()) || 'maestro');
-  const inputs = document.querySelectorAll('[id^="setting-cap-"]');
+  const rows = Array.from(document.querySelectorAll('#rt-cfg-lista .rt-cfg-row'));
+  const novosNomes = new Set();
+  const payload = [];
+  for (const row of rows) {
+    const nome = row.querySelector('.rt-cfg-nome')?.value.trim() || '';
+    const cap = parseInt(row.querySelector('.rt-cfg-cap')?.value, 10);
+    if (!nome) continue;
+    if (!(cap >= 1 && cap <= 50)) {
+      if (typeof intToast === 'function') intToast(`Capacidade inválida pra "${nome}". Use entre 1 e 50.`, true);
+      return;
+    }
+    if (novosNomes.has(nome)) {
+      if (typeof intToast === 'function') intToast(`"${nome}" duplicada. Cada unidade deve ter nome único.`, true);
+      return;
+    }
+    novosNomes.add(nome);
+    payload.push({ nome, cap, ordem: payload.length + 1, original: row.dataset.originalNome || '' });
+  }
+
   let ok = 0;
   let falhas = [];
-  for (const inp of inputs) {
-    const setor = inp.dataset.setor;
-    const cap = parseInt(inp.value, 10);
-    if (!(cap >= 1 && cap <= 50)) {
-      falhas.push(`${setor}: capacidade deve ser entre 1 e 50`);
-      continue;
+  try {
+    const respCur = await fetch(`${SB_URL}/rest/v1/config_retaguarda_ps?hospital_id=eq.${encodeURIComponent(HOSPITAL_ID)}&ativo=eq.true&select=nome_setor`, { headers: SB_H });
+    const atuais = respCur.ok ? await respCur.json() : [];
+    const atuaisNomes = new Set(atuais.map(a => a.nome_setor));
+
+    // DELETE das unidades removidas (original não veio no payload)
+    const removidas = atuais.filter(a => !payload.some(p => p.original === a.nome_setor || p.nome === a.nome_setor)).map(a => a.nome_setor);
+    for (const nome of removidas) {
+      try {
+        const r = await fetch(`${SB_URL}/rest/v1/config_retaguarda_ps?hospital_id=eq.${encodeURIComponent(HOSPITAL_ID)}&nome_setor=eq.${encodeURIComponent(nome)}`, {
+          method: 'DELETE',
+          headers: { ...SB_H, 'Prefer': 'return=minimal' }
+        });
+        if (r.ok) ok++; else falhas.push(`DEL ${nome}: HTTP ${r.status}`);
+      } catch (e) { falhas.push(`DEL ${nome}: ${e.message}`); }
     }
-    try {
-      const resp = await fetch(
-        `${SB_URL}/rest/v1/config_retaguarda_ps?hospital_id=eq.${encodeURIComponent(HOSPITAL_ID)}&nome_setor=eq.${encodeURIComponent(setor)}`,
-        {
-          method: 'PATCH',
-          headers: { ...SB_H, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ capacidade: cap, updated_by: userName, updated_at: new Date().toISOString() })
+
+    // UPSERT (INSERT/PATCH/RENAME)
+    for (const item of payload) {
+      const isNew = !item.original || !atuaisNomes.has(item.original);
+      const isRename = item.original && item.original !== item.nome;
+      try {
+        if (isRename) {
+          await fetch(`${SB_URL}/rest/v1/config_retaguarda_ps?hospital_id=eq.${encodeURIComponent(HOSPITAL_ID)}&nome_setor=eq.${encodeURIComponent(item.original)}`, {
+            method: 'DELETE',
+            headers: { ...SB_H, 'Prefer': 'return=minimal' }
+          });
+          const r = await fetch(`${SB_URL}/rest/v1/config_retaguarda_ps`, {
+            method: 'POST',
+            headers: { ...SB_H, 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ hospital_id: HOSPITAL_ID, nome_setor: item.nome, capacidade: item.cap, ordem: item.ordem, ativo: true, created_by: userName, updated_by: userName })
+          });
+          if (r.ok) ok++; else falhas.push(`REN ${item.nome}: HTTP ${r.status}`);
+        } else if (isNew) {
+          const r = await fetch(`${SB_URL}/rest/v1/config_retaguarda_ps`, {
+            method: 'POST',
+            headers: { ...SB_H, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+            body: JSON.stringify({ hospital_id: HOSPITAL_ID, nome_setor: item.nome, capacidade: item.cap, ordem: item.ordem, ativo: true, created_by: userName, updated_by: userName })
+          });
+          if (r.ok) ok++; else falhas.push(`INS ${item.nome}: HTTP ${r.status}`);
+        } else {
+          const r = await fetch(`${SB_URL}/rest/v1/config_retaguarda_ps?hospital_id=eq.${encodeURIComponent(HOSPITAL_ID)}&nome_setor=eq.${encodeURIComponent(item.nome)}`, {
+            method: 'PATCH',
+            headers: { ...SB_H, 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ capacidade: item.cap, ordem: item.ordem, updated_by: userName, updated_at: new Date().toISOString() })
+          });
+          if (r.ok) ok++; else falhas.push(`UPD ${item.nome}: HTTP ${r.status}`);
         }
-      );
-      if (resp.ok) ok++;
-      else falhas.push(`${setor}: HTTP ${resp.status}`);
-    } catch (e) {
-      falhas.push(`${setor}: ${e.message}`);
+      } catch (e) { falhas.push(`${item.nome}: ${e.message}`); }
     }
+  } catch (e) {
+    falhas.push(`Erro geral: ${e.message}`);
   }
 
   if (falhas.length) {
     if (typeof intToast === 'function') intToast(`${ok} salvas. Falhas: ${falhas.join('; ')}`, true);
   } else {
-    if (typeof intToast === 'function') intToast(`✓ Configurações salvas (${ok} setor${ok === 1 ? '' : 'es'} + LP ${lpVal}d)`, false);
+    if (typeof intToast === 'function') intToast(`✓ Configurações salvas (${payload.length} unidade${payload.length === 1 ? '' : 's'} + LP ${lpVal}d)`, false);
   }
 
   _retagFecharSettings();
