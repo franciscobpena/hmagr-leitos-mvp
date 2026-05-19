@@ -20023,12 +20023,36 @@ const INT = {
   drawer: { mode: null, internacaoId: null }
 };
 
+// [2026-05-19 CC#11] Cache de setores dinâmicos = config_gestao_leitos.nome_categoria + config_retaguarda_ps.nome_setor (ambos UPPERCASE).
+// Resolve bug paciente órfão: Maestro tinha que digitar setor manual via popover pra alinhar com card Gestão Leitos.
+let _HMAGR_CFG_SETORES_DINAMICOS = [];
+
+async function _hmagrFetchSetoresConfig() {
+  try {
+    const [glResp, retResp] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/config_gestao_leitos?hospital_id=eq.${HOSPITAL_ID}&ativo=eq.true&select=nome_categoria`, { headers: SB_H }),
+      fetch(`${SB_URL}/rest/v1/config_retaguarda_ps?hospital_id=eq.${HOSPITAL_ID}&ativo=eq.true&select=nome_setor`, { headers: SB_H })
+    ]);
+    const gl = glResp.ok ? await glResp.json() : [];
+    const ret = retResp.ok ? await retResp.json() : [];
+    const nomes = [
+      ...gl.map(g => (g.nome_categoria || '').toString().trim().toUpperCase()),
+      ...ret.map(r => (r.nome_setor || '').toString().trim().toUpperCase())
+    ].filter(Boolean);
+    _HMAGR_CFG_SETORES_DINAMICOS = [...new Set(nomes)].sort();
+  } catch (e) {
+    console.warn('[CC#11] _hmagrFetchSetoresConfig falhou:', e);
+    _HMAGR_CFG_SETORES_DINAMICOS = [];
+  }
+}
+
 async function intFetchAll() {
   try {
     const [internacoes, conferencias, dicionario] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/v_internacoes_kanban?hospital=eq.${HOSPITAL_ID}&order=data_internacao.desc&limit=2000`, { headers: SB_H }).then(r => r.json()),
       fetch(`${SB_URL}/rest/v1/conferencias_match?hospital=eq.${HOSPITAL_ID}&order=created_at.desc&limit=500`, { headers: SB_H }).then(r => r.json()),
-      fetch(`${SB_URL}/rest/v1/dicionario_dados?hospital=eq.${HOSPITAL_ID}&order=aba,coluna`, { headers: SB_H }).then(r => r.json())
+      fetch(`${SB_URL}/rest/v1/dicionario_dados?hospital=eq.${HOSPITAL_ID}&order=aba,coluna`, { headers: SB_H }).then(r => r.json()),
+      _hmagrFetchSetoresConfig()
     ]);
     INT.internacoes = Array.isArray(internacoes) ? internacoes : [];
     INT.conferencias = Array.isArray(conferencias) ? conferencias : [];
@@ -20374,12 +20398,14 @@ function intSalvarAddSetor() {
 
 /* [Fase 53] Input row tipo planilha */
 function intPopularInputRow() {
-  // [Fase 55.13] Setores: hardcoded + DISTINCT de INT.internacoes (descobre novos cadastrados)
+  // [2026-05-19 CC#11] Setores agora = config_gestao_leitos.nome_categoria + config_retaguarda_ps.nome_setor + hardcoded fallback + DISTINCT.
+  // Resolve bug paciente órfão (Maestro cadastrou setor='PSIQUIÁTRICO' não-mapeado em card Gestão Leitos).
   const setoresBase = ['ALA A','ALA B','PS','UTI 1','UTI 2','UTI 3','UCP','EMERGÊNCIA'];
-  const setoresDinamicos = (typeof INT !== 'undefined' && Array.isArray(INT.internacoes))
+  const setoresConfig = Array.isArray(_HMAGR_CFG_SETORES_DINAMICOS) ? _HMAGR_CFG_SETORES_DINAMICOS : [];
+  const setoresInternados = (typeof INT !== 'undefined' && Array.isArray(INT.internacoes))
     ? [...new Set(INT.internacoes.map(i => (i.setor || '').toString().trim().toUpperCase()).filter(Boolean))]
     : [];
-  const setores = [...new Set([...setoresBase, ...setoresDinamicos])].sort();
+  const setores = [...new Set([...setoresConfig, ...setoresBase, ...setoresInternados])].sort();
   // [Fase 55.13] Especialidades: usa cadastro_especialidades canônico (mesma fonte do Boarding) com fallback hardcoded
   const espsCadastro = (typeof AB !== 'undefined' && AB.cadastro && Array.isArray(AB.cadastro.especialidades))
     ? AB.cadastro.especialidades.filter(e => e.ativo !== false).map(e => (e.nome || '').toString().trim().toUpperCase()).filter(Boolean)
@@ -20718,7 +20744,13 @@ function intAbrirEditar(id) {
 }
 
 function intRenderForm(i) {
-  const setores = ['ALA A','ALA B','PS','UTI 1','UTI 2','UTI 3','UCP','EMERGÊNCIA'];
+  // [2026-05-19 CC#11] Setores agora puxam de config_gestao_leitos+config_retaguarda_ps (paridade com intPopularInputRow).
+  const setoresBase = ['ALA A','ALA B','PS','UTI 1','UTI 2','UTI 3','UCP','EMERGÊNCIA'];
+  const setoresConfig = Array.isArray(_HMAGR_CFG_SETORES_DINAMICOS) ? _HMAGR_CFG_SETORES_DINAMICOS : [];
+  const setoresInternados = (typeof INT !== 'undefined' && Array.isArray(INT.internacoes))
+    ? [...new Set(INT.internacoes.map(it => (it.setor || '').toString().trim().toUpperCase()).filter(Boolean))]
+    : [];
+  const setores = [...new Set([...setoresConfig, ...setoresBase, ...setoresInternados])].sort();
   const esps = ['MEDICINA INTENSIVA','CLÍNICA MÉDICA','ORTOPEDIA','CIRURGIA GERAL','CIRURGIA TORÁCICA','CIRURGIA VASCULAR','NEUROCIRURGIA','NEUROLOGIA','BUCOMAXILO','NEFROLOGIA'];
   const v = (k, dflt='') => i && i[k] != null ? String(i[k]).replace(/"/g,'&quot;').replace(/</g,'&lt;') : dflt;
   const sel = (cur, opts) => '<option value="">— escolha —</option>' + opts.map(o => `<option value="${o}" ${cur === o ? 'selected' : ''}>${o}</option>`).join('');
