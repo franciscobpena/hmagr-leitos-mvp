@@ -7207,14 +7207,14 @@ body.is-edit-focus [data-edit-focus] {
       <div class="int-input-grid">
         <div class="iif iif-nome"><label>Nome paciente *</label><input type="text" id="int-in-nome" class="ins-cell" required></div>
         <div class="iif iif-atend"><label>Atendimento *</label><input type="number" id="int-in-atend" class="ins-cell" required placeholder="2384823" inputmode="numeric"></div>
-        <div class="iif iif-setor"><label>Setor *</label>
+        <div class="iif iif-setor"><label>Setor * <i aria-hidden="true" data-lucide="info" class="th-info" title="Agrupa os leitos nos cards do dashboard — Gestão de Leitos e Retaguarda. É a divisão organizacional da unidade (ex.: Clínica do Trauma 1, Observação 2). Diferente da especialidade médica do paciente."></i></label>
           <div class="ins-with-add">
             <select id="int-in-setor" class="ins-cell" required></select>
             <button type="button" class="ins-add-btn" onclick="intAbrirAddSetor(this)" title="Adicionar novo setor" aria-label="Adicionar novo setor">+</button>
           </div>
         </div>
         <div class="iif iif-leito"><label>Leito</label><input type="text" id="int-in-leito" class="ins-cell" placeholder="17.2"></div>
-        <div class="iif iif-esp"><label>Especialidade *</label>
+        <div class="iif iif-esp"><label>Especialidade * <i aria-hidden="true" data-lucide="info" class="th-info" title="Área médica responsável pelo paciente (ex.: Ortopedia, Clínica Médica). Não muda o agrupamento dos cards no dashboard — isso é função do Setor."></i></label>
           <div class="ins-with-add">
             <select id="int-in-esp" class="ins-cell" required></select>
             <button type="button" class="ins-add-btn" onclick="insAbrirAddCadastro('esp', this)" title="Adicionar nova especialidade" aria-label="Adicionar nova especialidade">+</button>
