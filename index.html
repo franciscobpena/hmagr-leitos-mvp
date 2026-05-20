@@ -8482,35 +8482,42 @@ async function loadData() {
 }
 
 /* [Fase 55] Mapeia internacoes_hmsa → estrutura Patient consumida por heatmap/KPIs/gráficos */
+// [HMAGR 2026-05-20 CC#13] Callback de mapeamento isolado (1 row internacoes_hmsa → patient).
+// Extraído de mapInternacoesAPatients pra ser reusado por _retagAbrirAcao SEM o filtro de leito
+// (pacientes Retaguarda PS podem não ter leito atribuído e ainda assim precisam abrir ação).
+function _mapInternacaoRow(i) {
+  return {
+    hospital: HOSPITAL_ID,
+    setor: i.setor || '',
+    numLeito: String(i.leito || '').trim(),
+    especialidade: i.especialidade || '',
+    dataAdmissao: i.data_internacao || '',
+    previsaoAlta: i.previsao_kanban || i.previsao_alta_drg || '',
+    // [HOB 2026-05-08] Preservar campos separados pra detectar divergência DRG vs Kanban no bed-card
+    previsaoAltaDRG: i.previsao_alta_drg || '',
+    previsaoKanban: i.previsao_kanban || '',
+    statusPendencia: i.pendencia || '',
+    tipoPendencia: '',
+    diasPermanencia: 0, // calcDiasHoje calcula a partir de dataAdmissao
+    longaPermanencia: false,
+    diasExcedentes: 0,
+    idEpisodio: i.id,
+    timestampEnfermaria: i.updated_at || null,
+    enfermaria: i.setor || '',
+    nomePaciente: i.nome_paciente || '',
+    atendimento: i.atendimento || '',
+    cidPrincipal: i.cid_principal || '',
+    grauSeveridade: i.grau_severidade || null,
+    especialidade_lida: i.especialidade || '',
+    especialidade_normalizada: i.especialidade || '',
+    especialidade_override: ''
+  };
+}
+
 function mapInternacoesAPatients(rows) {
   return rows
     .filter(i => i.leito && String(i.leito).trim() !== '')
-    .map(i => ({
-      hospital: HOSPITAL_ID,
-      setor: i.setor || '',
-      numLeito: String(i.leito || '').trim(),
-      especialidade: i.especialidade || '',
-      dataAdmissao: i.data_internacao || '',
-      previsaoAlta: i.previsao_kanban || i.previsao_alta_drg || '',
-      // [HOB 2026-05-08] Preservar campos separados pra detectar divergência DRG vs Kanban no bed-card
-      previsaoAltaDRG: i.previsao_alta_drg || '',
-      previsaoKanban: i.previsao_kanban || '',
-      statusPendencia: i.pendencia || '',
-      tipoPendencia: '',
-      diasPermanencia: 0, // calcDiasHoje calcula a partir de dataAdmissao
-      longaPermanencia: false,
-      diasExcedentes: 0,
-      idEpisodio: i.id,
-      timestampEnfermaria: i.updated_at || null,
-      enfermaria: i.setor || '',
-      nomePaciente: i.nome_paciente || '',
-      atendimento: i.atendimento || '',
-      cidPrincipal: i.cid_principal || '',
-      grauSeveridade: i.grau_severidade || null,
-      especialidade_lida: i.especialidade || '',
-      especialidade_normalizada: i.especialidade || '',
-      especialidade_override: ''
-    }));
+    .map(_mapInternacaoRow);
 }
 
 function parseGSheets(table) {
@@ -9236,11 +9243,19 @@ function renderCharts(pts) {
 /* ═══════════════════════════════════════════════════════════
    MODAL (F4)
 ═══════════════════════════════════════════════════════════ */
+// [HMAGR 2026-05-20 CC#13] Resolve o paciente do modal aberto. Pacientes Retaguarda PS não
+// estão em allPatients (loadData os exclui via setor=not.in), então abrem o modal via
+// opts.patient → guardado em window._retagModalPatient. Demais (Gestão Leitos) usam allPatients[modalIdx].
+function getModalPatient() {
+  return window._retagModalPatient || allPatients[modalIdx];
+}
+
 function openModal(idx, opts) {
   opts = opts || {};
-  const p = allPatients[idx];
+  const p = opts.patient || allPatients[idx];
   if (!p) return;
   modalIdx = idx;
+  window._retagModalPatient = opts.patient || null;
   modalKey = annKey(p);
 
   const d  = calcDiasHoje(p);
@@ -9347,6 +9362,7 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   modalIdx = null;
   modalKey = null;
+  window._retagModalPatient = null;  // [HMAGR 2026-05-20 CC#13] limpa paciente Retaguarda do modal
   // [Fase 46] Se veio do plano de ação (barreiras-alta), volta pra lá
   if (window._modalReturnSubView === 'barreiras-alta') {
     window._modalReturnSubView = null;
@@ -9619,7 +9635,7 @@ function removeChecklistItem(idx) {
 
 async function saveAnnotation() {
   if (!modalKey) return;
-  const p = allPatients[modalIdx];
+  const p = getModalPatient();
   if (!p) return;
 
   // [v5.9.2] Guard de autenticação EGA
@@ -9733,7 +9749,7 @@ async function clearAnnotation() {
   if (!modalKey) return;
   if (!(await requireEgaAuth())) return;
   if (!confirm('Remover anotação deste leito?')) return;
-  const p   = allPatients[modalIdx];
+  const p   = getModalPatient();
   const ep  = epKey(p);
   const ann = annCache[ep];
 
@@ -9759,7 +9775,7 @@ async function clearAnnotation() {
 /* Concluir ação direto do modal */
 async function concludeFromModal() {
   if (!modalIdx && modalIdx !== 0) return;
-  const p = allPatients[modalIdx];
+  const p = getModalPatient();
   const ann = annCache[epKey(p)];
   if (!ann?.action_id) return;
   if (!(await requireEgaAuth())) return;
@@ -9779,7 +9795,7 @@ async function concludeFromModal() {
 /* Cancelar ação direto do modal */
 async function cancelFromModal() {
   if (!modalIdx && modalIdx !== 0) return;
-  const p = allPatients[modalIdx];
+  const p = getModalPatient();
   const ep = epKey(p);
   const ann = annCache[ep];
   if (!ann?.action_id) return;
@@ -14862,6 +14878,19 @@ async function _retagAlocar(idIntern, nomeSetor) {
   }
 }
 
+/** [HMAGR 2026-05-20 CC#13] Abre o modal de barreira/ação pra um paciente Retaguarda PS.
+ *  Paridade com Gestão de Leitos (clicar no bed-card abre openModal de ação). Pacientes
+ *  Retaguarda não estão em allPatients (loadData os exclui via setor=not.in), então são
+ *  mapeados sob demanda do cache de rows crus + passados via opts.patient. _mapInternacaoRow
+ *  é usado direto (sem o filtro de leito de mapInternacoesAPatients — Retaguarda pode não
+ *  ter leito). Edição de dados do paciente continua no botão lápis (bed-edit-btn → intAbrirEditar). */
+async function _retagAbrirAcao(id) {
+  const cache = window._retagPacientesCache || [];
+  const row = cache.find(r => String(r.id) === String(id));
+  if (!row) { showToast('Paciente não encontrado. Recarregue a página.', 'error'); return; }
+  openModal(null, { patient: _mapInternacaoRow(row), novaAcao: true });
+}
+
 /** [Entrega 3 — 2026-05-07] Renderiza heatmap visual Retaguarda PS — port adaptado de renderHeatmap.
  *  Diferenças vs heatmap principal:
  *  - Agrupa por SETOR (Retaguarda 1, Retaguarda 2) em vez de especialidade
@@ -14914,6 +14943,9 @@ async function renderRetaguardaCards() {
 
     const nomesRetag = new Set(setores.map(s => s.nome_setor));
     const pacientesRetag = todosAtivos.filter(p => nomesRetag.has(p.setor));
+    // [HMAGR 2026-05-20 CC#13] Cache de rows crus internacoes_hmsa pra _retagAbrirAcao
+    // mapear o paciente sob demanda quando clica no bed-card (abre modal de barreira/ação).
+    window._retagPacientesCache = pacientesRetag;
 
     const calcDias = (p) => {
       const dt = p.data_internacao;
@@ -14982,7 +15014,7 @@ async function renderRetaguardaCards() {
           // [Parity C 2026-05-07] Bed-card vira <button> com onclick=intAbrirEditar (igual heatmap principal).
           // Overlays: bed-alta-btn + bed-edit-btn aparecem no hover (CSS .bed-card:hover já existe).
           const idEsc = String(p.id).replace(/'/g, "\\'");
-          return `<button type="button" class="bed-card ${cc}${isLP ? ' lp-pulse' : ''}" onclick="intAbrirEditar('${idEsc}')" title="${tooltip}" aria-label="${tooltip}">
+          return `<button type="button" class="bed-card ${cc}${isLP ? ' lp-pulse' : ''}" onclick="_retagAbrirAcao('${idEsc}')" title="${tooltip}" aria-label="${tooltip}">
             <span class="bed-alta-btn" role="button" tabindex="0" onclick="event.stopPropagation(); _intHandlerDarAlta('${idEsc}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();_intHandlerDarAlta('${idEsc}');}" title="Dar alta médica" aria-label="Dar alta médica do leito ${leitoLabel}">
               <i aria-hidden="true" data-lucide="check-circle"></i>
             </span>
@@ -21078,7 +21110,11 @@ function getFilteredActions() {
     // [Entrega 4.1 — 2026-05-07] Filtro enfermaria — quando vem de Retaguarda PS > Barreiras, pré-filtra Ret 1/2
     if (apFilter.enfermaria === '__retaguarda__') {
       const enf = (a.lp_cases?.enfermaria || '').trim();
-      if (!enf.startsWith('Retaguarda')) return false;
+      // [HMAGR 2026-05-20 CC#13] Compara contra config_retaguarda_ps dinâmico (HMAGR usa
+      // "Observação 1/2/UCP", não "Retaguarda N"). Fallback startsWith se cache não pronto.
+      const retNomes = (typeof AB !== 'undefined' && AB.cadastro && AB.cadastro.retaguardaNomes) || [];
+      const ehRetag = retNomes.length ? retNomes.includes(enf) : enf.startsWith('Retaguarda');
+      if (!ehRetag) return false;
     } else if (apFilter.enfermaria) {
       if ((a.lp_cases?.enfermaria||'') !== apFilter.enfermaria) return false;
     }
