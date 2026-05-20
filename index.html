@@ -9744,7 +9744,11 @@ async function saveAnnotation() {
 
   closeModal();
   try { renderAll(wardSel.value || null); } catch(e) { console.warn('[HJXXIII] Render:', e.message); }
-  loadActionPlanData();
+  // [2026-05-20 CC#11] await torna a atualização do badge tab-atraso-badge determinística
+  // (era fire-and-forget — badge "+N" da tab Barreiras da Alta não reagia ao adicionar ação).
+  // updateAtrasoBadge explícito = defense-in-depth caso loadActionPlanData encerre no catch.
+  await loadActionPlanData();
+  if (typeof updateAtrasoBadge === 'function') updateAtrasoBadge();
 }
 
 async function clearAnnotation() {
