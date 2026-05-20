@@ -14947,8 +14947,11 @@ async function renderRetaguardaCards() {
       return;
     }
 
-    const nomesRetag = new Set(setores.map(s => s.nome_setor));
-    const pacientesRetag = todosAtivos.filter(p => nomesRetag.has(p.setor));
+    // [HMAGR 2026-05-20 CC#13] Matching case-insensitive: config_retaguarda_ps.nome_setor é "Observação 2"
+    // mas o select de cadastro (_hmagrFetchSetoresConfig força UPPERCASE) pode salvar "OBSERVAÇÃO 2".
+    // Sem normalizar case, paciente cadastrado via select sumiria do card. Defense-in-depth.
+    const nomesRetagUpper = new Set(setores.map(s => (s.nome_setor || '').toUpperCase()));
+    const pacientesRetag = todosAtivos.filter(p => nomesRetagUpper.has((p.setor || '').toUpperCase()));
     // [HMAGR 2026-05-20 CC#13] Cache de rows crus internacoes_hmsa pra _retagAbrirAcao
     // mapear o paciente sob demanda quando clica no bed-card (abre modal de barreira/ação).
     window._retagPacientesCache = pacientesRetag;
@@ -15002,7 +15005,7 @@ async function renderRetaguardaCards() {
     };
 
     const setorBlocks = setores.map(s => {
-      const ocupados = pacientesRetag.filter(p => p.setor === s.nome_setor);
+      const ocupados = pacientesRetag.filter(p => (p.setor || '').toUpperCase() === (s.nome_setor || '').toUpperCase());
       const ocupados_n = ocupados.length;
       const vazios_n = Math.max(0, s.capacidade - ocupados_n);
       const ocupacaoSetorPct = s.capacidade ? Math.round(ocupados_n / s.capacidade * 100) : 0;
@@ -15039,10 +15042,13 @@ async function renderRetaguardaCards() {
           </button>`;
         }).join('');
 
+      // [HMAGR 2026-05-20 CC#13] Leito livre vira <button> clicável (paridade com Gestão de Leitos
+      // linha ~8980). Clicar leva pra cadastro pré-preenchido com o setor. Antes era <div> decorativo.
+      const _setorOnclick = (s.nome_setor || '').replace(/'/g, "\\'");
       const bedsVazios = Array.from({ length: vazios_n }, () =>
-        `<div class="bed-card bed-card-livre-piscando" title="Leito vago em ${escHtml(s.nome_setor)}" aria-label="Leito vago" style="display:flex;align-items:center;justify-content:center;">
+        `<button type="button" class="bed-card bed-card-livre-piscando" onclick="_retagCadastrarInline('${_setorOnclick}')" title="Leito livre em ${escHtml(s.nome_setor)} — clique pra cadastrar paciente" aria-label="Leito livre em ${escHtml(s.nome_setor)}, clique pra cadastrar" style="display:flex;align-items:center;justify-content:center;cursor:pointer;">
           <div style="font-size:11px;color:rgba(20,184,166,0.95);font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">livre</div>
-        </div>`
+        </button>`
       ).join('');
 
       // [Parity C 2026-05-07] Freshness no header do setor — proxy: max(updated_at) dos pacientes ocupados
@@ -15421,6 +15427,36 @@ function _gestaoCadastrarInline(especialidade) {
     }
     if (nomeEl) nomeEl.focus();
     if (typeof intToast === 'function') intToast(`Cadastro pré-preenchido com "${especialidade}" — preencha nome e atendimento`, false);
+  }, 300);
+}
+
+/** [HMAGR 2026-05-20 CC#13] Paridade com _gestaoCadastrarInline pro lado Retaguarda PS.
+ *  Clicar num leito livre de um setor Retaguarda (Observação 1/2, UCP) navega pra
+ *  Internações > Lista com o SETOR pré-preenchido (não especialidade — setor ≠ especialidade).
+ *  Match case-insensitive da opção no select porque _hmagrFetchSetoresConfig força UPPERCASE;
+ *  se a opção não existir, cria com o case original de config_retaguarda_ps. */
+function _retagCadastrarInline(nomeSetor) {
+  if (typeof isEditAuthed === 'function' && !isEditAuthed()) {
+    if (typeof requireEditAuth === 'function') { requireEditAuth(() => _retagCadastrarInline(nomeSetor)); return; }
+  }
+  if (typeof switchView === 'function') switchView('internacoes', 'lista');
+  setTimeout(() => {
+    const setEl = document.getElementById('int-in-setor');
+    const nomeEl = document.getElementById('int-in-nome');
+    if (setEl) {
+      const alvo = (nomeSetor || '').toUpperCase();
+      let opt = Array.from(setEl.options).find(o => (o.value || '').toUpperCase() === alvo);
+      if (!opt) {
+        opt = document.createElement('option');
+        opt.value = nomeSetor;
+        opt.textContent = nomeSetor;
+        setEl.appendChild(opt);
+      }
+      setEl.value = opt.value;
+      setEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (nomeEl) nomeEl.focus();
+    if (typeof intToast === 'function') intToast(`Cadastro pré-preenchido com setor "${nomeSetor}" — preencha nome e atendimento`, false);
   }, 300);
 }
 
@@ -20558,13 +20594,16 @@ function intPopularInputRow() {
   const setoresInternados = (typeof INT !== 'undefined' && Array.isArray(INT.internacoes))
     ? [...new Set(INT.internacoes.map(i => (i.setor || '').toString().trim().toUpperCase()).filter(Boolean))]
     : [];
-  const setores = [...new Set([...setoresConfig, ...setoresBase, ...setoresInternados])].sort();
   // [Fase 55.13] Especialidades: usa cadastro_especialidades canônico (mesma fonte do Boarding) com fallback hardcoded
   const espsCadastro = (typeof AB !== 'undefined' && AB.cadastro && Array.isArray(AB.cadastro.especialidades))
     ? AB.cadastro.especialidades.filter(e => e.ativo !== false).map(e => (e.nome || '').toString().trim().toUpperCase()).filter(Boolean)
     : [];
   const espsHard = ['MEDICINA INTENSIVA','CLÍNICA MÉDICA','ORTOPEDIA','CIRURGIA GERAL','CIRURGIA TORÁCICA','CIRURGIA VASCULAR','NEUROCIRURGIA','NEUROLOGIA','BUCOMAXILO','NEFROLOGIA'];
   const esps = espsCadastro.length ? [...new Set(espsCadastro)].sort() : espsHard;
+  // [HMAGR 2026-05-20 CC#13] Setor inclui especialidades como opção. Setor ≠ especialidade, mas
+  // a lista de setor contém as especialidades porque há hospitais que organizam os grupos de
+  // leitos por especialidade e outros por setor físico — o dropdown cobre os 2 modelos.
+  const setores = [...new Set([...setoresConfig, ...setoresBase, ...setoresInternados, ...esps])].sort();
 
   const setEl = document.getElementById('int-in-setor');
   if (setEl) {
@@ -20903,8 +20942,9 @@ function intRenderForm(i) {
   const setoresInternados = (typeof INT !== 'undefined' && Array.isArray(INT.internacoes))
     ? [...new Set(INT.internacoes.map(it => (it.setor || '').toString().trim().toUpperCase()).filter(Boolean))]
     : [];
-  const setores = [...new Set([...setoresConfig, ...setoresBase, ...setoresInternados])].sort();
   const esps = ['MEDICINA INTENSIVA','CLÍNICA MÉDICA','ORTOPEDIA','CIRURGIA GERAL','CIRURGIA TORÁCICA','CIRURGIA VASCULAR','NEUROCIRURGIA','NEUROLOGIA','BUCOMAXILO','NEFROLOGIA'];
+  // [HMAGR 2026-05-20 CC#13] Setor inclui especialidades (Maestro: hospitais que organizam setor por especialidade).
+  const setores = [...new Set([...setoresConfig, ...setoresBase, ...setoresInternados, ...esps])].sort();
   const v = (k, dflt='') => i && i[k] != null ? String(i[k]).replace(/"/g,'&quot;').replace(/</g,'&lt;') : dflt;
   const sel = (cur, opts) => '<option value="">— escolha —</option>' + opts.map(o => `<option value="${o}" ${cur === o ? 'selected' : ''}>${o}</option>`).join('');
   return `
