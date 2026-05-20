@@ -6639,10 +6639,10 @@ body.is-edit-focus [data-edit-focus] {
   <div class="sub-tabs-row" id="sub-tabs-gestao">
     <!-- Esquerda: navegação -->
     <div class="sub-tabs-nav">
-      <button class="sub-tab" id="tab-sub-dashboard" onclick="switchView('gestao-leitos','dashboard')">
+      <button class="sub-tab" id="tab-sub-dashboard" onclick="switchView('gestao-leitos','dashboard')" title="Ocupação ao vivo dos leitos por setor">
         <i aria-hidden="true" data-lucide="layout-dashboard"></i> Dashboard
       </button>
-      <button class="sub-tab" id="tab-sub-action-plan" onclick="switchView('gestao-leitos','barreiras-alta')">
+      <button class="sub-tab" id="tab-sub-action-plan" onclick="switchView('gestao-leitos','barreiras-alta')" title="Plano de ação e barreiras pra alta dos pacientes">
         <i aria-hidden="true" data-lucide="clipboard-list"></i> Barreiras da Alta <span class="tab-badge" id="tab-atraso-badge" style="display:none">0</span>
       </button>
       <!-- [HOB 2026-05-08] Botão Configurar especialidades + capacidade do dashboard (mesmo pattern Retaguarda PS) -->
@@ -7358,21 +7358,26 @@ body.is-edit-focus [data-edit-focus] {
 <!-- [Entrega 2 — 2026-05-07] Sub-tabs Retaguarda PS -->
 <div class="sub-tabs-row" id="sub-tabs-retaguarda-ps" style="display:none">
   <div class="sub-tabs-nav">
-    <button class="sub-tab" id="tab-sub-retag-fila" onclick="switchView('retaguarda-ps','fila')">
+    <button class="sub-tab" id="tab-sub-retag-fila" onclick="switchView('retaguarda-ps','fila')" title="Pacientes do Boarding aguardando leito de Retaguarda">
       <i aria-hidden="true" data-lucide="list"></i> Fila
     </button>
-    <button class="sub-tab" id="tab-sub-retag-cards" onclick="switchView('retaguarda-ps','cards')" title="Visão dos leitos de Retaguarda 1 e 2">
-      <i aria-hidden="true" data-lucide="bed-double"></i> Leitos
+    <button class="sub-tab" id="tab-sub-retag-cards" onclick="switchView('retaguarda-ps','cards')" title="Ocupação ao vivo dos leitos de Retaguarda">
+      <i aria-hidden="true" data-lucide="layout-dashboard"></i> Leitos
     </button>
     <button class="sub-tab" id="tab-sub-retag-barreiras" onclick="switchView('retaguarda-ps','barreiras')" title="Plano de ação e barreiras pra alta dos pacientes Retaguarda">
-      <i aria-hidden="true" data-lucide="alert-triangle"></i> Barreiras
+      <i aria-hidden="true" data-lucide="clipboard-list"></i> Barreiras
     </button>
     <button class="sub-tab" id="tab-sub-retag-historico" onclick="switchView('retaguarda-ps','historico')" title="Pacientes que já saíram da Retaguarda PS">
       <i aria-hidden="true" data-lucide="database"></i> Histórico
     </button>
-    <button type="button" id="btn-retag-settings" onclick="_retagAbrirSettings()" title="Configurar LP threshold e capacidade dos setores" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--textMuted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:5px;">
+    <!-- [2026-05-19 CC#11] Botão Configurar — paridade design system com btn-gl-settings (Gestão de Leitos) -->
+    <button type="button" id="btn-retag-settings" onclick="_retagAbrirSettings()" title="Configurar unidades, capacidade e limite de permanência" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--textMuted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:5px;">
       <i aria-hidden="true" data-lucide="settings" style="width:13px;height:13px;"></i> Configurar
     </button>
+  </div>
+  <!-- [2026-05-19 CC#11] Controles contextuais — paridade com sub-tabs-controls de Gestão de Leitos -->
+  <div class="sub-tabs-controls">
+    <button class="btn btn-ghost" onclick="_retagRecarregar()" title="Atualizar dados" aria-label="Atualizar dados"><i aria-hidden="true" data-lucide="refresh-cw"></i></button>
   </div>
 </div>
 
@@ -15680,6 +15685,16 @@ function _retagAddLinhaCfg() {
 
 function _retagFecharSettings() {
   document.getElementById('retag-settings-modal')?.remove();
+}
+
+// [2026-05-19 CC#11] Recarrega a sub-view atual de Retaguarda PS — paridade com reloadData() de Gestão de Leitos.
+// Cada renderRetaguarda* re-fetcha do Supabase. Fallback switchView cobre sub-view 'barreiras'.
+function _retagRecarregar() {
+  const sv = (typeof currentSubView !== 'undefined' && currentSubView) ? currentSubView : 'cards';
+  if (sv === 'cards' && typeof renderRetaguardaCards === 'function') renderRetaguardaCards();
+  else if (sv === 'fila' && typeof renderRetaguardaFila === 'function') renderRetaguardaFila();
+  else if (sv === 'historico' && typeof renderRetaguardaHistorico === 'function') renderRetaguardaHistorico();
+  else if (typeof switchView === 'function') switchView('retaguarda-ps', sv);
 }
 
 async function _retagSalvarSettings() {
