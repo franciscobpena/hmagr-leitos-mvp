@@ -22776,6 +22776,15 @@ function renderVolumetriaChart() {
     borderRadius: 4
   }));
 
+  // [Fix maio/26] beginAtZero achatava as barras (atendimentos ~8700-9400 viravam um paredão
+  // de altura quase igual). Zoom no range real dos dados revela a variação mês a mês.
+  const _vals = datasets.flatMap(d => d.data).filter(v => v != null && v > 0);
+  const _min = _vals.length ? Math.min(..._vals) : 0;
+  const _max = _vals.length ? Math.max(..._vals) : 0;
+  const _pad = (_max - _min) > 0 ? (_max - _min) * 0.6 : (_max * 0.1 || 1);
+  const _yMin = Math.max(0, Math.floor((_min - _pad) / 100) * 100);
+  const _yMax = Math.ceil((_max + _pad) / 100) * 100;
+
   // [Fase 46] cleanup defensivo: captura instância órfã vinculada ao canvas
   // mesmo quando _chartsFase1.volumetria está null (evita "Canvas is already in use").
   const existing = Chart.getChart(canvas);
@@ -22792,7 +22801,7 @@ function renderVolumetriaChart() {
       },
       scales: {
         x: { ticks: { color: '#94A3B8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-        y: { beginAtZero: true, ticks: { color: '#94A3B8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        y: { beginAtZero: false, suggestedMin: _yMin, suggestedMax: _yMax, ticks: { color: '#94A3B8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
       }
     }
   });
