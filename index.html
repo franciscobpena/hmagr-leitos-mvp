@@ -27093,7 +27093,11 @@ async function kfCompressImage(file) {
   });
 }
 
-/** Calcula SHA-256 de um ArrayBuffer (SubtleCrypto nativo — sem lib). Retorna hex string. */
+/**
+ * Calcula SHA-256 via SubtleCrypto nativo (sem lib). Retorna hex string.
+ * SHA-256 — nomeado 'md5' por compat com schema kanban_image_hashes (coluna text).
+ * A coluna aceita qualquer string; algoritmo só precisa ser consistente para dedup.
+ */
 async function kfCalcImageHash(arrayBuffer) {
   const digest = await crypto.subtle.digest('SHA-256', arrayBuffer);
   return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -27267,12 +27271,18 @@ function kfUpdateGravarBtn() {
   const pendentes = kfState.pacientes.filter(p =>
     KF_CAMPOS_ESSENCIAIS.some(f => (p.campos_baixa_confianca || []).includes(f))
   ).length;
+  // Bloqueia também se setor não foi identificado (upsert com setor null não aparece no dashboard)
+  const semSetor = !kfState.setorSigla;
   const btn = document.getElementById('kf-btn-gravar');
   const lbl = document.getElementById('kf-pendentes-label');
   if (!btn) return;
-  btn.disabled = pendentes > 0;
+  btn.disabled = pendentes > 0 || semSetor;
   btn.textContent = `Gravar ${kfState.pacientes.length} paciente${kfState.pacientes.length !== 1 ? 's' : ''}`;
-  if (lbl) lbl.textContent = pendentes > 0 ? `${pendentes} ❓ pendente${pendentes !== 1 ? 's' : ''}` : '';
+  if (lbl) {
+    if (semSetor) lbl.textContent = 'Setor ❓ — confirme antes de gravar';
+    else if (pendentes > 0) lbl.textContent = `${pendentes} ❓ pendente${pendentes !== 1 ? 's' : ''}`;
+    else lbl.textContent = '';
+  }
 }
 
 /** Abre overlay de edição de linha (RT-08 tap expande) */

@@ -3,20 +3,23 @@
  * Moca /api/extract → upload fixture → review → Gravar → confirma payload upsert
  *
  * NÃO chama Anthropic real nem escreve no Supabase real.
+ * O DB (internacoes_hmsa) também é mockado intencionalmente — a confirmação de
+ * persistência via SQL real é smoke manual pré-deploy (roda o Maestro após
+ * ANTHROPIC_API_KEY configurada no Vercel e deploy feito).
+ *
  * Verifica:
  *  - CA-01.1: HEIC rejeitado com mensagem PT-BR
  *  - CA-04.1: re-upload da mesma foto → dedup bloqueia
  *  - CA-E2E: upload → review → gravar → payload correto capturado
+ *  - CA-03.4: Gravar desabilitado com campo essencial ❓
+ *  - CA-07.1: hit-target ≥ 44px (mobile)
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 const mockResponse = require('../fixtures/mock-extract-response.json');
 
-// Fixture: Kaban clinica cirurgica 1.jpeg (arquivo real disponível)
-const FIXTURE_PATH = path.resolve(
-  __dirname,
-  '../../../../Francisco Projetos/second_brain_md_package/00-Inbox/hmagr/Kaban clinica cirurgica 1.jpeg'
-);
+// Fixture local copiada para o repo — não depende de path absoluto externo
+const FIXTURE_PATH = path.resolve(__dirname, '../fixtures/kanban-foto-fixture.jpeg');
 
 test.describe('Kanban Foto OCR — HMAGR', () => {
   test.beforeEach(async ({ page }) => {

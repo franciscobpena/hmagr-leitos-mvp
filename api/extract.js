@@ -17,7 +17,7 @@ const SETORES_VALIDOS = ['CM', 'CT', 'CC1', 'CC2', 'OBS1', 'OBS2', 'UDC'];
 const SETOR_SIGLAS = { CM: 'Clínica Médica', CT: 'Clínica do Trauma', CC1: 'Clínica Cirúrgica 1', CC2: 'Clínica Cirúrgica 2', OBS1: 'Observação 1', OBS2: 'Observação 2', UDC: 'UDC' };
 
 // Modelo Anthropic — acurácia máxima em manuscrito clínico
-const ANTHROPIC_MODEL = 'claude-opus-4-5';
+const ANTHROPIC_MODEL = 'claude-opus-4-8';
 
 /** System prompt cacheável (>4096 tokens com few-shot inline) */
 function buildSystemPrompt() {
@@ -108,6 +108,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
+  // md5 = SHA-256 nomeado 'md5' por compat com schema kanban_image_hashes (coluna text)
   const { imageB64, md5, dhash, setorHint } = req.body || {};
   if (!imageB64 || !md5 || !dhash) {
     return res.status(400).json({ error: 'Campos obrigatórios: imageB64, md5, dhash' });
@@ -173,10 +174,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // Detectar media type da imagem
-  const mediaType = imageB64.startsWith('/9j/') || imageB64.startsWith('iVBOR') === false
-    ? 'image/jpeg'
-    : 'image/png';
+  const mediaType = 'image/jpeg'; // kfCompressImage sempre emite JPEG
 
   let resultado = null;
   let erro = null;
