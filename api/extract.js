@@ -3,9 +3,7 @@
  * Fase 2 T2.4-T2.6: stages A (MD5 dedup) + B (dHash dedup) + C (Anthropic Vision)
  * G6: toda query filtra hospital_id='HMAGR'
  */
-import { hammingDistance } from './dhash.js';
-
-export const config = { maxDuration: 60 };
+const { hammingDistance } = require('../lib/dhash');
 
 const SB_URL = 'https://smzejxtnykpjmxvxfzet.supabase.co';
 const SB_KEY = process.env.SB_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtemVqeHRueWtwam14dnhmemV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyOTA5ODQsImV4cCI6MjA5MTg2Njk4NH0.3WhTXc5j7YmsKNhxzrTIyAoGjMh36gnIIY0mBge-fKE';
@@ -102,7 +100,7 @@ async function logExtracao(payload) {
   } catch (_) { /* best-effort */ }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }

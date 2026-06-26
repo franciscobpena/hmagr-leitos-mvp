@@ -1,14 +1,19 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "*.html", "use": "@vercel/static" },
-    { "src": "agenda/**", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/", "headers": { "cache-control": "no-store, no-cache, must-revalidate, max-age=0" }, "dest": "/index.html" },
-    { "src": "/(.*\\.html)", "headers": { "cache-control": "no-store, no-cache, must-revalidate, max-age=0" }, "dest": "/$1" },
-    { "src": "/(.*)", "dest": "/$1" }
+  "functions": {
+    "api/extract.js": { "maxDuration": 60 }
+  },
+  "headers": [
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }
+      ]
+    },
+    {
+      "source": "/(.*\\.html)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }
+      ]
+    }
   ]
 }

@@ -4,7 +4,7 @@
  */
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { hammingDistance } = require('../../api/dhash');
+const { hammingDistance } = require('../../lib/dhash');
 
 /**
  * Simula a lógica de dedup do server (stages A + B).

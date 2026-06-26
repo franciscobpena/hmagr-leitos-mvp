@@ -4,7 +4,7 @@
  */
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { dhashFromPixels, hammingDistance } = require('../../api/dhash');
+const { dhashFromPixels, hammingDistance } = require('../../lib/dhash');
 
 describe('dHash', () => {
   it('retorna 16-char hex para pixels válidos', () => {
