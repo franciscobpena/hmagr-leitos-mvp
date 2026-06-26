@@ -3,8 +3,7 @@
  * Fase 2 T2.4-T2.6: stages A (MD5 dedup) + B (dHash dedup) + C (Anthropic Vision)
  * G6: toda query filtra hospital_id='HMAGR'
  */
-const { hammingDistance } = require('./dhash');
-const crypto = require('crypto');
+import { hammingDistance } from './dhash.js';
 
 export const config = { maxDuration: 60 };
 
