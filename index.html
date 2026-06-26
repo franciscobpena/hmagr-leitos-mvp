@@ -6530,6 +6530,104 @@ body.is-edit-focus [data-edit-focus] {
   font-weight: 400;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   [Fase 2 HMAGR] KANBAN FOTO OCR — estilos mobile-first
+   ══════════════════════════════════════════════════════════════ */
+.kf-wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+.kf-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.kf-subtitle { font-size: 13px; color: var(--textMuted); margin-bottom: 20px; }
+.kf-upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.kf-upload-zone:hover, .kf-upload-zone.drag-over {
+  border-color: var(--accent, #14b8a6);
+  background: rgba(20,184,166,.06);
+}
+#kf-upload-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent, #14b8a6); color: #fff;
+  border: none; border-radius: 8px;
+  padding: 14px 28px; font-size: 15px; font-weight: 600;
+  cursor: pointer; min-height: 48px; transition: opacity 0.15s;
+}
+#kf-upload-btn:hover { opacity: 0.88; }
+#kf-upload-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.kf-upload-hint { font-size: 12px; color: var(--textMuted); margin-top: 10px; }
+.kf-error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); border-radius: 8px; padding: 12px 14px; color: #ef4444; font-size: 13px; margin-top: 12px; }
+.kf-processing { text-align: center; padding: 32px 0; color: var(--textMuted); font-size: 14px; }
+.kf-processing .kf-spin { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--accent, #14b8a6); border-radius: 50%; animation: kf-rotate 0.7s linear infinite; margin-right: 10px; vertical-align: middle; }
+@keyframes kf-rotate { to { transform: rotate(360deg); } }
+.kf-dedup-box { background: rgba(20,184,166,.08); border: 1px solid rgba(20,184,166,.3); border-radius: 8px; padding: 14px 16px; font-size: 14px; margin-top: 12px; }
+.kf-success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); border-radius: 8px; padding: 14px 16px; font-size: 14px; color: #22c55e; margin-top: 12px; font-weight: 600; }
+/* Tabela de revisão */
+.kf-review-header { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 10px; flex-wrap: wrap; gap: 8px; }
+.kf-review-title { font-size: 15px; font-weight: 600; }
+.kf-setor-badge { font-size: 12px; background: var(--bgSubtle, #1a1f2e); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; color: var(--textMuted); }
+.kf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kf-table th { background: var(--bgSubtle, #1a1f2e); color: var(--textMuted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.4px; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.kf-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.kf-table tr:last-child td { border-bottom: none; }
+.kf-table tr[data-row] { cursor: pointer; transition: background 0.1s; }
+.kf-table tr[data-row]:hover { background: var(--bgSubtle, #1a1f2e); }
+.kf-status-emoji { font-size: 16px; }
+.kf-duvida { color: #f59e0b; font-weight: 700; }
+.kf-sticky-bottom {
+  position: sticky; bottom: 0; background: var(--bg);
+  border-top: 1px solid var(--border); padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  z-index: 10; margin: 0 -16px;
+}
+.kf-btn-gravar {
+  background: var(--accent, #14b8a6); color: #fff;
+  border: none; border-radius: 8px; padding: 12px 24px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  min-height: 44px; transition: opacity 0.15s;
+}
+.kf-btn-gravar:disabled { opacity: 0.4; cursor: not-allowed; }
+.kf-pendentes-label { font-size: 12px; color: #f59e0b; }
+/* Overlay de edição de linha */
+.kf-overlay-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 1000; display: flex; align-items: flex-end;
+}
+.kf-overlay-card {
+  background: var(--bg); border-radius: 16px 16px 0 0;
+  width: 100%; max-height: 85vh; overflow-y: auto;
+  padding: 20px 16px 32px;
+}
+.kf-overlay-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+.kf-field-group { margin-bottom: 14px; }
+.kf-field-label { font-size: 11px; color: var(--textMuted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+.kf-field-input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bgSubtle, #1a1f2e); color: var(--text);
+  font-size: 14px; box-sizing: border-box;
+}
+.kf-field-input.duvida { border-color: #f59e0b; }
+.kf-overlay-btns { display: flex; gap: 10px; margin-top: 20px; }
+.kf-overlay-btns button { flex: 1; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 44px; }
+.kf-btn-confirmar { background: var(--accent, #14b8a6); color: #fff; border: none; }
+.kf-btn-cancelar { background: transparent; border: 1px solid var(--border); color: var(--text); }
+/* Modal dedup semântico */
+.kf-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.kf-modal-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; max-width: 420px; width: 100%; padding: 24px; }
+.kf-modal-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+.kf-modal-body { font-size: 14px; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
+.kf-modal-btns { display: flex; flex-direction: column; gap: 10px; }
+.kf-modal-btns button { padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; min-height: 44px; text-align: left; border: 1px solid var(--border); background: var(--bgSubtle, #1a1f2e); color: var(--text); }
+.kf-modal-btns button:hover { border-color: var(--accent, #14b8a6); }
+@media (max-width: 480px) {
+  .kf-table { font-size: 12px; }
+  .kf-table th { font-size: 9px; padding: 6px 8px; }
+  .kf-table td { padding: 8px; }
+}
+
 </style>
 </head>
 <body>
@@ -6641,6 +6739,10 @@ body.is-edit-focus [data-edit-focus] {
       </button>
       <button class="sub-tab" id="tab-sub-action-plan" onclick="switchView('gestao-leitos','barreiras-alta')" title="Plano de ação e barreiras pra alta dos pacientes">
         <i aria-hidden="true" data-lucide="clipboard-list"></i> Barreiras da Alta <span class="tab-badge" id="tab-atraso-badge" style="display:none">0</span>
+      </button>
+      <!-- [Fase 2 HMAGR] Foto do Quadro Kanban -->
+      <button class="sub-tab" id="tab-sub-kanban-foto" onclick="location.hash='#/kanban/foto'" title="Atualizar leitos via foto do quadro Kanban físico">
+        <i aria-hidden="true" data-lucide="camera"></i> Foto do Quadro
       </button>
       <!-- [HOB 2026-05-08] Botão Configurar especialidades + capacidade do dashboard (mesmo pattern Retaguarda PS) -->
       <button type="button" id="btn-gl-settings" onclick="_gestaoAbrirSettings()" title="Configurar especialidades visíveis e capacidade de leitos" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--textMuted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:5px;">
@@ -7581,6 +7683,90 @@ body.is-edit-focus [data-edit-focus] {
   </main>
   <div class="footer-mount"></div>
 </div><!-- #view-action-plan -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     VIEW KANBAN FOTO — Pipeline foto→OCR [Fase 2 HMAGR]
+═══════════════════════════════════════════════════════════ -->
+<div id="view-kanban-foto" style="display:none">
+<main>
+<div class="kf-wrap">
+  <div class="kf-title"><i data-lucide="camera" aria-hidden="true" style="width:18px;height:18px;vertical-align:-3px;margin-right:6px"></i>Foto do Quadro Kanban</div>
+  <div class="kf-subtitle">Tire ou envie a foto do quadro físico. O sistema extrai os dados e pede sua confirmação antes de salvar.</div>
+
+  <!-- Upload zone -->
+  <div class="kf-upload-zone" id="kf-upload-zone"
+       ondragover="event.preventDefault();this.classList.add('drag-over')"
+       ondragleave="this.classList.remove('drag-over')"
+       ondrop="this.classList.remove('drag-over');kfHandleFileChange({target:{files:event.dataTransfer.files}})">
+    <input type="file" id="kf-upload-input" accept=".jpg,.jpeg,.png,.webp,.gif" style="display:none" onchange="kfHandleFileChange(event)">
+    <button type="button" id="kf-upload-btn" onclick="document.getElementById('kf-upload-input').click()" aria-label="Selecionar foto do quadro Kanban">
+      <i data-lucide="camera" aria-hidden="true" style="width:18px;height:18px"></i>
+      Enviar foto do quadro
+    </button>
+    <div class="kf-upload-hint">JPG · PNG · WebP — até 10 MB (comprime automaticamente)</div>
+  </div>
+
+  <!-- Erro -->
+  <div id="kf-error" class="kf-error" style="display:none" role="alert" aria-live="polite"></div>
+
+  <!-- Processando -->
+  <div id="kf-processing" class="kf-processing" style="display:none">
+    <span class="kf-spin" aria-hidden="true"></span>
+    <span id="kf-processing-msg">Lendo o quadro...</span>
+  </div>
+
+  <!-- Dedup binário -->
+  <div id="kf-dedup-msg" class="kf-dedup-box" style="display:none" role="status"></div>
+
+  <!-- Seção de revisão -->
+  <div id="kf-review-section" style="display:none">
+    <div class="kf-review-header">
+      <span class="kf-review-title" id="kf-review-title">Confirmar dados extraídos</span>
+      <span class="kf-setor-badge" id="kf-setor-badge"></span>
+    </div>
+    <div style="font-size:12px;color:var(--textMuted);margin-bottom:12px">Toque em qualquer linha para editar. Campos marcados com <strong class="kf-duvida">❓</strong> precisam de confirmação.</div>
+    <div style="overflow-x:auto">
+      <table class="kf-table" id="kf-review-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Leito</th>
+            <th>Nome</th>
+            <th>Pendência</th>
+          </tr>
+        </thead>
+        <tbody id="kf-review-tbody"></tbody>
+      </table>
+    </div>
+    <div class="kf-sticky-bottom">
+      <span class="kf-pendentes-label" id="kf-pendentes-label"></span>
+      <button type="button" id="kf-btn-gravar" class="kf-btn-gravar" onclick="kfGravar()" disabled>Gravar — aguardando</button>
+    </div>
+  </div>
+
+  <!-- Sucesso -->
+  <div id="kf-success-msg" class="kf-success" style="display:none" role="status" aria-live="polite"></div>
+
+</div>
+</main>
+</div><!-- #view-kanban-foto -->
+
+<!-- Modal dedup semântico (snapshot mesmo setor+data) -->
+<div id="kf-semantic-modal" class="kf-modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="kf-modal-title">
+  <div class="kf-modal-box">
+    <div class="kf-modal-title" id="kf-modal-title">Já existe snapshot para este setor</div>
+    <div class="kf-modal-body" id="kf-modal-body"></div>
+    <div class="kf-modal-btns">
+      <button type="button" id="kf-modal-substituir" onclick="kfSemanticDedupEscolha('substituir')">Substituir — snapshot anterior fica no histórico</button>
+      <button type="button" id="kf-modal-manter" onclick="kfSemanticDedupEscolha('manter')">Manter o anterior e descartar esta foto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay de edição de paciente (tap em linha da tabela) -->
+<div id="kf-overlay" class="kf-overlay-backdrop" style="display:none" role="dialog" aria-modal="true">
+  <div class="kf-overlay-card" id="kf-overlay-card"></div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════
      VIEW C — INDICADORES MENSAIS + VOLUMETRIA (Fase 1)
@@ -17146,7 +17332,7 @@ function switchView(view, subView, subSubView) {
 
   // ─── Esconder TODAS as views ───
   // [Fase 50/51/52 + Maestro 05/mai] internacoes-fila adicionada (criada dinâmica, antes ficava órfã)
-  ['home','dashboard','action-plan','indicadores','kaizens','agenda-lean','ferramentas','preworks','simulador-nedocs','analise-visao-geral','analise-raio-x','analise-listas','analise-insercao','analise-historico','internacoes-lista','internacoes-fila','internacoes-conferencias','internacoes-dicionario','maturidade-nir','maturidade-nir-detalhe','maturidade-nir-historico','cockpit-nir','retaguarda-fila','retaguarda-cards','retaguarda-historico'].forEach(v => {
+  ['home','dashboard','action-plan','indicadores','kaizens','agenda-lean','ferramentas','preworks','simulador-nedocs','analise-visao-geral','analise-raio-x','analise-listas','analise-insercao','analise-historico','internacoes-lista','internacoes-fila','internacoes-conferencias','internacoes-dicionario','maturidade-nir','maturidade-nir-detalhe','maturidade-nir-historico','cockpit-nir','retaguarda-fila','retaguarda-cards','retaguarda-historico','kanban-foto'].forEach(v => {
     const el = document.getElementById('view-' + v);
     if (el) el.style.display = 'none';
   });
@@ -17241,12 +17427,16 @@ function switchView(view, subView, subSubView) {
       document.getElementById('view-retaguarda-fila').style.display = 'block';
       if (typeof renderRetaguardaFila === 'function') renderRetaguardaFila();
     }
+  } else if (view === 'kanban') {
+    // [Fase 2 HMAGR] Pipeline foto→OCR
+    document.getElementById('view-kanban-foto').style.display = 'block';
+    if (typeof renderKanbanFoto === 'function') renderKanbanFoto();
   }
 
   // ─── Visibilidade de chrome (tabs / sub-tabs / btn-home / controles dashboard) ───
   const isHome = (view === 'home');
-  const isGestao = (view === 'gestao-leitos');
-  const isDashSub = (isGestao && subView === 'dashboard');
+  const isGestao = (view === 'gestao-leitos' || view === 'kanban'); // [Fase 2 HMAGR] kanban usa sub-tabs gestao
+  const isDashSub = (view === 'gestao-leitos' && subView === 'dashboard');
   const isAnalise = (view === 'analise-boarding');
   const isListas = false; // [Fase 54] sub-tab Listas removida
   const isInserir = (isAnalise && subView === 'inserir');
@@ -17290,6 +17480,13 @@ function switchView(view, subView, subSubView) {
   document.getElementById('estrategico-indicadores')?.classList.toggle('is-active', view === 'indicadores');
   document.getElementById('estrategico-kaizens')?.classList.toggle('is-active', view === 'kaizens');
   document.getElementById('tab-gestao-leitos').classList.toggle('active', isGestao);
+  // [Fase 2 HMAGR] Sub-tab kanban-foto active state
+  const tabSubKanbanFoto = document.getElementById('tab-sub-kanban-foto');
+  if (tabSubKanbanFoto) tabSubKanbanFoto.classList.toggle('active', view === 'kanban');
+  const tabSubDash = document.getElementById('tab-sub-dashboard');
+  if (tabSubDash) tabSubDash.classList.toggle('active', view === 'gestao-leitos' && (!subView || subView === 'dashboard'));
+  const tabSubAP = document.getElementById('tab-sub-action-plan');
+  if (tabSubAP) tabSubAP.classList.toggle('active', view === 'gestao-leitos' && subView === 'barreiras-alta');
   // [Fase 48]
   const tabAnalise = document.getElementById('tab-analise-boarding');
   if (tabAnalise) tabAnalise.classList.toggle('active', isAnalise);
@@ -26689,8 +26886,13 @@ function parseHash() {
   const view = parts[0];
 
   // [Fase 12/15/41/48/50/52/60] views válidas; 'cadastro' redireciona pra analise-boarding/listas
-  const validViews = ['home', 'indicadores', 'kaizens', 'gestao-leitos', 'agenda-lean', 'ferramentas', 'preworks', 'simulador-nedocs', 'analise-boarding', 'cadastro', 'internacoes', 'maturidade-nir', 'cockpit-nir', 'retaguarda-ps'];
+  const validViews = ['home', 'indicadores', 'kaizens', 'gestao-leitos', 'agenda-lean', 'ferramentas', 'preworks', 'simulador-nedocs', 'analise-boarding', 'cadastro', 'internacoes', 'maturidade-nir', 'cockpit-nir', 'retaguarda-ps', 'kanban'];
   if (!validViews.includes(view)) return { view: 'home', subView: null, subSubView: null, id: null };
+
+  // [Fase 2 HMAGR] kanban/foto — pipeline foto→OCR
+  if (view === 'kanban') {
+    return { view: 'kanban', subView: 'foto', subSubView: null, id: null };
+  }
 
   // gestao-leitos usa parts[1] como subView
   if (view === 'gestao-leitos') {
@@ -26780,6 +26982,507 @@ function applyHashRoute() {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   [Fase 2 HMAGR] KANBAN FOTO OCR — Pipeline foto→OCR
+   T2.2-T2.9: Upload · Compressão · dHash · Dedup · Revisão · Gravar
+═══════════════════════════════════════════════════════════ */
+
+/** Estado do fluxo atual (resetado em cada novo upload) */
+let kfState = {
+  pacientes: [],          // array de objetos paciente editáveis
+  setorSigla: null,       // sigla extraída (CM/CT/CC1/CC2/OBS1/OBS2/UDC)
+  setorNome: null,
+  dataKanban: null,       // ISO date string
+  confiancaSetor: 1,
+  existingSnapshotId: null, // id do snapshot ativo para dedup semântico
+  imageHash: null,
+  imageDhash: null,
+  pendingSemanticChoice: null // fn a chamar após escolha no modal
+};
+
+const KF_SETOR_SIGLAS = {
+  CM: 'Clínica Médica', CT: 'Clínica do Trauma',
+  CC1: 'Clínica Cirúrgica 1', CC2: 'Clínica Cirúrgica 2',
+  OBS1: 'Observação 1', OBS2: 'Observação 2', UDC: 'UDC'
+};
+const KF_CAMPOS_ESSENCIAIS = ['leito', 'data_admissao'];
+
+/** Render inicial — reseta a view ao navegar para #/kanban/foto */
+function renderKanbanFoto() {
+  kfState = { pacientes: [], setorSigla: null, setorNome: null, dataKanban: null, confiancaSetor: 1, existingSnapshotId: null, imageHash: null, imageDhash: null, pendingSemanticChoice: null };
+  kfShowSection('upload');
+  const inp = document.getElementById('kf-upload-input');
+  if (inp) inp.value = '';
+}
+
+/** Exibe só a seção correta (upload|processing|review|success) */
+function kfShowSection(which) {
+  const ids = ['kf-upload-zone', 'kf-error', 'kf-processing', 'kf-dedup-msg', 'kf-review-section', 'kf-success-msg'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  if (which === 'upload') {
+    document.getElementById('kf-upload-zone').style.display = '';
+  } else if (which === 'processing') {
+    document.getElementById('kf-upload-zone').style.display = '';
+    document.getElementById('kf-processing').style.display = '';
+  } else if (which === 'review') {
+    document.getElementById('kf-review-section').style.display = '';
+  } else if (which === 'dedup') {
+    document.getElementById('kf-upload-zone').style.display = '';
+    document.getElementById('kf-dedup-msg').style.display = '';
+  } else if (which === 'success') {
+    document.getElementById('kf-success-msg').style.display = '';
+  }
+}
+
+function kfShowError(msg) {
+  const el = document.getElementById('kf-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = '';
+  document.getElementById('kf-upload-zone').style.display = '';
+  document.getElementById('kf-upload-btn').disabled = false;
+}
+
+/** CA-01.1: Valida formato. Rejeita HEIC com microcopy regra 3am. */
+function kfValidateFormat(file) {
+  const name = (file.name || '').toLowerCase();
+  const type = (file.type || '').toLowerCase();
+  if (name.endsWith('.heic') || name.endsWith('.heif') || type.includes('heic') || type.includes('heif')) {
+    return 'Esse formato não abre direto no sistema. Tire a foto pelo app de câmera padrão do celular (vai sair em JPG) ou converta pra JPG antes de enviar.';
+  }
+  const ok = /\.(jpe?g|png|webp|gif)$/i.test(name) || /^image\/(jpeg|png|webp|gif)/.test(type);
+  if (!ok) return 'Formato não aceito. Envie uma foto em JPG, PNG ou WebP.';
+  return null;
+}
+
+/** CA-01.4: Comprime imagem via Canvas pra ≤4.5MB. Retorna base64 JPEG. */
+async function kfCompressImage(file) {
+  return new Promise((resolve, reject) => {
+    const MAX_BYTES = 4.5 * 1024 * 1024;
+    const MAX_SIDE = 2576;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      // Redimensiona se lado > 2576px (limite nativo Claude Vision)
+      if (width > MAX_SIDE || height > MAX_SIDE) {
+        const ratio = MAX_SIDE / Math.max(width, height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      // Qualidade adaptativa: decrementa 0.05 até caber em 4.5MB
+      let quality = 0.85;
+      let b64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+      while (b64.length * 0.75 > MAX_BYTES && quality > 0.30) {
+        quality -= 0.05;
+        b64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+      }
+      if (b64.length * 0.75 > MAX_BYTES) {
+        reject(new Error('Imagem muito grande mesmo após compressão. Diminua a resolução ou tire uma nova mais perto do quadro.'));
+        return;
+      }
+      resolve(b64);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível carregar a imagem.')); };
+    img.src = url;
+  });
+}
+
+/** Calcula SHA-256 de um ArrayBuffer (SubtleCrypto nativo — sem lib). Retorna hex string. */
+async function kfCalcImageHash(arrayBuffer) {
+  const digest = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** dHash perceptual via Canvas (RT-06 browser) — 64 bits → 16-char hex */
+async function kfCalcDHash(imgDataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const W = 9, H = 8;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, W, H);
+      const data = ctx.getImageData(0, 0, W, H).data;
+      const gray = [];
+      for (let i = 0; i < W * H; i++) {
+        gray.push(0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2]);
+      }
+      let bits = 0n;
+      for (let row = 0; row < H; row++) {
+        for (let col = 0; col < W - 1; col++) {
+          bits = (bits << 1n) | (gray[row*W + col] > gray[row*W + col + 1] ? 1n : 0n);
+        }
+      }
+      resolve(bits.toString(16).padStart(16, '0'));
+    };
+    img.onerror = reject;
+    img.src = imgDataUrl;
+  });
+}
+
+/** Entry point: chamado quando usuário seleciona arquivo (CA-01.1, CA-01.4) */
+async function kfHandleFileChange(event) {
+  const file = (event.target && event.target.files) ? event.target.files[0] : (event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files[0] : null);
+  if (!file) return;
+
+  const fmtErr = kfValidateFormat(file);
+  if (fmtErr) { kfShowError(fmtErr); return; }
+
+  kfShowSection('processing');
+  document.getElementById('kf-upload-btn').disabled = true;
+  document.getElementById('kf-processing-msg').textContent = 'Comprimindo imagem...';
+
+  let imageB64, imageHash, imageDhash;
+  try {
+    imageB64 = await kfCompressImage(file);
+    document.getElementById('kf-processing-msg').textContent = 'Calculando identificador...';
+    // Hash = SHA-256 do base64 comprimido
+    const enc = new TextEncoder();
+    imageHash = await kfCalcImageHash(enc.encode(imageB64).buffer);
+    // dHash via imagem comprimida
+    imageDhash = await kfCalcDHash('data:image/jpeg;base64,' + imageB64);
+  } catch (e) {
+    kfShowSection('upload');
+    document.getElementById('kf-upload-btn').disabled = false;
+    kfShowError(e.message || 'Erro ao processar a imagem.');
+    return;
+  }
+
+  kfState.imageHash = imageHash;
+  kfState.imageDhash = imageDhash;
+
+  document.getElementById('kf-processing-msg').textContent = 'Lendo o quadro... isso pode levar até 30s.';
+  await kfSubmitToAPI(imageB64, imageHash, imageDhash);
+  document.getElementById('kf-upload-btn').disabled = false;
+}
+
+/** Envia para /api/extract. Lida com dedup e resposta normal. */
+async function kfSubmitToAPI(imageB64, hash, dhash) {
+  let resp, data;
+  try {
+    resp = await fetch('/api/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageB64, md5: hash, dhash, setorHint: null })
+    });
+    data = await resp.json();
+  } catch (e) {
+    kfShowSection('upload');
+    kfShowError('Falha de rede ao enviar a imagem. Verifique a conexão e tente de novo.');
+    return;
+  }
+
+  if (!resp.ok) {
+    kfShowSection('upload');
+    kfShowError(data.error || 'Erro ao extrair dados do quadro. Tente de novo.');
+    return;
+  }
+
+  // CA-04.1: dedup binário
+  if (data.status === 'duplicada') {
+    const hora = data.processedAt ? new Date(data.processedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    kfShowSection('dedup');
+    document.getElementById('kf-dedup-msg').innerHTML = `ℹ️ Foto já processada${hora ? ' às ' + hora : ''}. Nada a fazer.`;
+    return;
+  }
+
+  // CA-01.2: confiança do setor < 80% → pedir confirmação
+  if ((data.confianca_setor || 1) < 0.80) {
+    // A UI já marca ❓ no setor; operador pode corrigir no overlay
+  }
+
+  kfState.setorSigla = data.setor_sigla;
+  kfState.setorNome = data.setor_nome || KF_SETOR_SIGLAS[data.setor_sigla] || data.setor_sigla;
+  kfState.dataKanban = data.data_kanban;
+  kfState.confiancaSetor = data.confianca_setor || 1;
+
+  // Normaliza pacientes: adiciona campos_baixa_confianca se ausente
+  kfState.pacientes = (data.pacientes || []).map((p, i) => ({
+    _idx: i,
+    leito: p.leito || null,
+    nome: p.nome || null,
+    idade: p.idade != null ? p.idade : null,
+    diagnostico: p.diagnostico || null,
+    data_admissao: p.data_admissao || null,
+    data_provavel_alta: p.data_provavel_alta || null,
+    pendencias: p.pendencias || '',
+    perfil_sala_alta: p.perfil_sala_alta != null ? p.perfil_sala_alta : null,
+    campos_baixa_confianca: p.campos_baixa_confianca || []
+  }));
+
+  kfRenderReview();
+}
+
+/** Calcula emoji de status derivado de datas (CA-05.2 — não lê cor do quadro) */
+function kfCalcStatus(dataAdm, dataPrevAlta) {
+  const hoje = new Date();
+  const adm = dataAdm ? new Date(dataAdm) : null;
+  const alta = dataPrevAlta ? new Date(dataPrevAlta) : null;
+  const diasInternado = adm ? Math.floor((hoje - adm) / 86400000) : null;
+  if (!alta) return diasInternado != null && diasInternado > 10 ? '🔴' : '🟡';
+  const diasParaAlta = Math.floor((alta - hoje) / 86400000);
+  if (diasParaAlta < 0) return '🔴'; // atrasado
+  if (diasParaAlta <= 1) return '🟡'; // próximo
+  return '🟢';
+}
+
+/** Renderiza tabela de revisão (CA-03.1, CA-02.3, CA-03.4) */
+function kfRenderReview() {
+  kfShowSection('review');
+  const setorLabel = kfState.confiancaSetor < 0.80
+    ? `${kfState.setorSigla || '?'} <span class="kf-duvida">❓</span>`
+    : (kfState.setorSigla || '?');
+  document.getElementById('kf-setor-badge').innerHTML = `${setorLabel} · ${kfState.dataKanban || '—'}`;
+  document.getElementById('kf-review-title').textContent = `Revisar ${kfState.pacientes.length} paciente${kfState.pacientes.length !== 1 ? 's' : ''} extraídos`;
+
+  const tbody = document.getElementById('kf-review-tbody');
+  tbody.innerHTML = kfState.pacientes.map(p => {
+    const bcc = p.campos_baixa_confianca || [];
+    const leito = bcc.includes('leito') ? `<span class="kf-duvida">❓</span>` : (p.leito || '—');
+    const nome = (typeof abreviarNomePaciente === 'function') ? (abreviarNomePaciente(p.nome) || '—') : (p.nome || '—');
+    const nomeDisplay = bcc.includes('nome') ? `<span class="kf-duvida">❓</span> ${nome}` : nome;
+    const pend = p.pendencias ? (p.pendencias.slice(0, 20) + (p.pendencias.length > 20 ? '…' : '')) : '—';
+    const pendDisplay = bcc.includes('pendencias') ? `<span class="kf-duvida">❓</span> ${pend}` : pend;
+    const status = kfCalcStatus(p.data_admissao, p.data_provavel_alta);
+    return `<tr data-row="${p._idx}" onclick="kfOpenOverlay(${p._idx})" tabindex="0" role="button" aria-label="Editar paciente leito ${p.leito || '?'}">
+      <td class="kf-status-emoji">${status}</td>
+      <td>${leito}</td>
+      <td>${nomeDisplay}</td>
+      <td style="color:var(--textMuted)">${pendDisplay}</td>
+    </tr>`;
+  }).join('');
+
+  kfUpdateGravarBtn();
+}
+
+/** Atualiza estado do botão Gravar (CA-03.4) */
+function kfUpdateGravarBtn() {
+  const pendentes = kfState.pacientes.filter(p =>
+    KF_CAMPOS_ESSENCIAIS.some(f => (p.campos_baixa_confianca || []).includes(f))
+  ).length;
+  const btn = document.getElementById('kf-btn-gravar');
+  const lbl = document.getElementById('kf-pendentes-label');
+  if (!btn) return;
+  btn.disabled = pendentes > 0;
+  btn.textContent = `Gravar ${kfState.pacientes.length} paciente${kfState.pacientes.length !== 1 ? 's' : ''}`;
+  if (lbl) lbl.textContent = pendentes > 0 ? `${pendentes} ❓ pendente${pendentes !== 1 ? 's' : ''}` : '';
+}
+
+/** Abre overlay de edição de linha (RT-08 tap expande) */
+function kfOpenOverlay(idx) {
+  const p = kfState.pacientes[idx];
+  if (!p) return;
+  const bcc = p.campos_baixa_confianca || [];
+  function field(id, label, value, duvida) {
+    const cls = duvida ? 'kf-field-input duvida' : 'kf-field-input';
+    const hint = duvida ? ` <span class="kf-duvida">❓</span>` : '';
+    return `<div class="kf-field-group">
+      <div class="kf-field-label">${label}${hint}</div>
+      <input class="${cls}" id="kf-ov-${id}" type="${id === 'data_admissao' || id === 'data_provavel_alta' ? 'date' : id === 'idade' ? 'number' : 'text'}" value="${value != null ? value : ''}" placeholder="${duvida ? 'Confirmar' : ''}">
+    </div>`;
+  }
+  const boolSala = p.perfil_sala_alta == null ? '' : (p.perfil_sala_alta ? 'sim' : 'nao');
+  document.getElementById('kf-overlay-card').innerHTML = `
+    <div class="kf-overlay-title">Leito ${p.leito || '?'} — editar</div>
+    ${field('leito', 'Leito', p.leito, bcc.includes('leito'))}
+    ${field('nome', 'Nome', p.nome, bcc.includes('nome'))}
+    ${field('idade', 'Idade', p.idade, bcc.includes('idade'))}
+    ${field('diagnostico', 'Diagnóstico', p.diagnostico, bcc.includes('diagnostico'))}
+    ${field('data_admissao', 'Data admissão', p.data_admissao, bcc.includes('data_admissao'))}
+    ${field('data_provavel_alta', 'Previsão de alta', p.data_provavel_alta, bcc.includes('data_provavel_alta'))}
+    ${field('pendencias', 'Pendências', p.pendencias, bcc.includes('pendencias'))}
+    <div class="kf-field-group">
+      <div class="kf-field-label">Perfil sala de alta${bcc.includes('perfil_sala_alta') ? ' <span class="kf-duvida">❓</span>' : ''}</div>
+      <select class="kf-field-input${bcc.includes('perfil_sala_alta') ? ' duvida' : ''}" id="kf-ov-perfil_sala_alta">
+        <option value="" ${!p.perfil_sala_alta && p.perfil_sala_alta !== false ? 'selected' : ''}>Não informado</option>
+        <option value="sim" ${p.perfil_sala_alta === true ? 'selected' : ''}>Sim</option>
+        <option value="nao" ${p.perfil_sala_alta === false ? 'selected' : ''}>Não</option>
+      </select>
+    </div>
+    <div class="kf-overlay-btns">
+      <button type="button" class="kf-btn-confirmar" onclick="kfConfirmarOverlay(${idx})">Confirmar</button>
+      <button type="button" class="kf-btn-cancelar" onclick="kfCloseOverlay()">Cancelar</button>
+    </div>`;
+  document.getElementById('kf-overlay').style.display = '';
+}
+
+/** Fecha overlay sem salvar */
+function kfCloseOverlay() {
+  document.getElementById('kf-overlay').style.display = 'none';
+}
+
+/** Salva edição do overlay no kfState e re-renderiza linha */
+function kfConfirmarOverlay(idx) {
+  const p = kfState.pacientes[idx];
+  if (!p) return;
+  const v = id => { const el = document.getElementById('kf-ov-' + id); return el ? el.value.trim() : null; };
+  const editados = {
+    leito: v('leito') || null,
+    nome: v('nome') || null,
+    idade: v('idade') ? parseInt(v('idade'), 10) : null,
+    diagnostico: v('diagnostico') || null,
+    data_admissao: v('data_admissao') || null,
+    data_provavel_alta: v('data_provavel_alta') || null,
+    pendencias: v('pendencias') || ''
+  };
+  const sala = v('perfil_sala_alta');
+  editados.perfil_sala_alta = sala === 'sim' ? true : sala === 'nao' ? false : null;
+
+  // Remove campo de baixa confiança se o operador forneceu valor
+  const bccAtual = p.campos_baixa_confianca || [];
+  const bccNovo = bccAtual.filter(f => {
+    const val = editados[f];
+    return val == null || val === '';
+  });
+  Object.assign(kfState.pacientes[idx], editados, { campos_baixa_confianca: bccNovo });
+  kfCloseOverlay();
+  kfRenderReview();
+}
+
+/** CA-04.2: checa se já existe snapshot (setor, data_kanban) ativo no Supabase */
+async function kfCheckSemanticDedup(setor, dataKanban) {
+  try {
+    const url = `${SB_URL}/rest/v1/kanban_snapshots?hospital_id=eq.HMAGR&setor=eq.${encodeURIComponent(setor)}&data_kanban=eq.${encodeURIComponent(dataKanban)}&arquivado_at=is.null&select=id,total_pacientes,ts_extracao`;
+    const resp = await fetch(url, { headers: SB_H });
+    if (resp.ok) {
+      const rows = await resp.json();
+      return rows.length > 0 ? rows[0] : null;
+    }
+  } catch (_) {}
+  return null;
+}
+
+/** Callback do modal de dedup semântico (CA-04.2) */
+async function kfSemanticDedupEscolha(escolha) {
+  document.getElementById('kf-semantic-modal').style.display = 'none';
+  if (escolha === 'manter') {
+    kfShowSection('upload');
+    document.getElementById('kf-dedup-msg').textContent = 'ℹ️ Snapshot anterior mantido. Nada foi alterado.';
+    document.getElementById('kf-dedup-msg').style.display = '';
+    return;
+  }
+  // Substituir: arquiva o snapshot anterior primeiro
+  if (kfState.existingSnapshotId) {
+    await fetch(`${SB_URL}/rest/v1/kanban_snapshots?id=eq.${kfState.existingSnapshotId}`, {
+      method: 'PATCH',
+      headers: { ...SB_H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ arquivado_at: new Date().toISOString(), motivo: 'substituido_por_reupload' })
+    }).catch(() => {});
+  }
+  // Prossegue com gravação
+  await kfExecutarGravacao();
+}
+
+/** Botão Gravar clicado (CA-03.3) */
+async function kfGravar() {
+  const btn = document.getElementById('kf-btn-gravar');
+  if (btn) btn.disabled = true;
+
+  // CA-04.2: checa dedup semântico antes de gravar
+  const existing = await kfCheckSemanticDedup(kfState.setorSigla, kfState.dataKanban);
+  if (existing) {
+    kfState.existingSnapshotId = existing.id;
+    const hora = existing.ts_extracao ? new Date(existing.ts_extracao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
+    document.getElementById('kf-modal-body').innerHTML =
+      `Já existe um snapshot do <strong>${kfState.setorNome}</strong> de <strong>${kfState.dataKanban}</strong> com ${existing.total_pacientes || '?'} pacientes gravado às ${hora}.<br><br>O que fazer?`;
+    document.getElementById('kf-semantic-modal').style.display = '';
+    if (btn) btn.disabled = false;
+    return;
+  }
+  await kfExecutarGravacao();
+  if (btn) btn.disabled = false;
+}
+
+/** Executa o upsert batch + snapshot + hashes (T2.8) */
+async function kfExecutarGravacao() {
+  const btn = document.getElementById('kf-btn-gravar');
+  if (btn) btn.disabled = true;
+
+  // 1. Upsert pacientes em internacoes_hmsa (G6: hospital='HMAGR')
+  const payload = kfState.pacientes.map(p => {
+    const leito = String(p.leito || '').trim();
+    return {
+      id: `HMAGR_int_${leito}`,
+      hospital: 'HMAGR',
+      atendimento: leito,
+      nome_paciente: p.nome || null,
+      setor: kfState.setorSigla,
+      leito: leito,
+      cid_principal: p.diagnostico || null,
+      idade: typeof p.idade === 'number' ? p.idade : null,
+      data_internacao: p.data_admissao || null,
+      previsao_kanban: p.data_provavel_alta || null,
+      pendencia: p.pendencias || null,
+      perfil_sala_alta: p.perfil_sala_alta != null ? p.perfil_sala_alta : null,
+      status_internacao: 'ativa',
+      fonte_criacao: 'migracao_planilha',
+      created_by: 'kanban_foto'
+    };
+  });
+
+  try {
+    const respI = await fetch(`${SB_URL}/rest/v1/internacoes_hmsa`, {
+      method: 'POST',
+      headers: { ...SB_H, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    if (!respI.ok) {
+      const txt = await respI.text();
+      throw new Error(`Erro ao salvar internações: ${txt.slice(0, 200)}`);
+    }
+  } catch (e) {
+    kfShowSection('review');
+    kfShowError(e.message || 'Erro ao salvar. Tente de novo.');
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  // 2. Grava kanban_snapshots
+  const snapId = crypto.randomUUID ? crypto.randomUUID() : `snap-${Date.now()}`;
+  await fetch(`${SB_URL}/rest/v1/kanban_snapshots`, {
+    method: 'POST',
+    headers: { ...SB_H, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      id: snapId,
+      hospital_id: 'HMAGR',
+      setor: kfState.setorSigla,
+      data_kanban: kfState.dataKanban,
+      ts_extracao: new Date().toISOString(),
+      metodo: 'foto',
+      total_pacientes: kfState.pacientes.length
+    })
+  }).catch(() => {});
+
+  // 3. Grava kanban_image_hashes (CA-01.5: imagem descartada, só hash persiste)
+  await fetch(`${SB_URL}/rest/v1/kanban_image_hashes`, {
+    method: 'POST',
+    headers: { ...SB_H, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      md5: kfState.imageHash,
+      dhash: kfState.imageDhash,
+      setor: kfState.setorSigla,
+      hospital_id: 'HMAGR',
+      ts_processamento: new Date().toISOString()
+    })
+  }).catch(() => {});
+
+  // Sucesso
+  kfShowSection('success');
+  document.getElementById('kf-success-msg').innerHTML =
+    `✅ ${kfState.pacientes.length} paciente${kfState.pacientes.length !== 1 ? 's' : ''} do ${kfState.setorNome} gravados (${kfState.dataKanban}). <button type="button" onclick="renderKanbanFoto()" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0;font-weight:600;text-decoration:underline;min-height:44px">Enviar nova foto</button>`;
+
+  // Recarrega dados do dashboard em background
+  if (typeof loadData === 'function') loadData();
+}
+
+/* ═══════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
@@ -26793,6 +27496,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (location.hash === '#/preworks' && typeof renderPreworks === 'function') renderPreworks();
   // [Fase 41] Garante render do Simulador NEDOCS caso a URL inicial seja simulador-nedocs
   if (location.hash === '#/simulador-nedocs' && typeof renderSimuladorNedocs === 'function') renderSimuladorNedocs();
+  // [Fase 2 HMAGR] Kanban Foto OCR
+  if (location.hash === '#/kanban/foto' && typeof renderKanbanFoto === 'function') renderKanbanFoto();
   // [Fase 21] Status bar viva da Home
   if ((!location.hash || location.hash === '' || location.hash === '#/' || location.hash === '#/home') && typeof renderHomeStatusBar === 'function') renderHomeStatusBar();
   // [Fase 22] Restaura badge de auth de edição se sessão ativa

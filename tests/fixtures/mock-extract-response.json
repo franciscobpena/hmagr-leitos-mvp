@@ -1,0 +1,33 @@
+{
+  "status": "ok",
+  "mock": true,
+  "setor_sigla": "CC1",
+  "setor_nome": "Clínica Cirúrgica 1",
+  "data_kanban": "2026-06-26",
+  "confianca_setor": 0.97,
+  "leitos_inativos": [],
+  "pacientes": [
+    {
+      "leito": "CC1-01",
+      "nome": "M.A.S.",
+      "idade": 45,
+      "diagnostico": "Fratura de fêmur",
+      "data_admissao": "2026-06-20",
+      "data_provavel_alta": "2026-06-28",
+      "pendencias": "BC ortop",
+      "perfil_sala_alta": false,
+      "campos_baixa_confianca": []
+    },
+    {
+      "leito": "CC1-02",
+      "nome": "F.J.A.T.",
+      "idade": null,
+      "diagnostico": "Apendicite",
+      "data_admissao": "2026-06-25",
+      "data_provavel_alta": null,
+      "pendencias": "",
+      "perfil_sala_alta": true,
+      "campos_baixa_confianca": ["idade"]
+    }
+  ]
+}
