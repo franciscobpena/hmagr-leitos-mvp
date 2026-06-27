@@ -28008,7 +28008,7 @@ async function audSalvar() {
   const auditor = (document.getElementById('aud-auditor').value || '').trim();
   const obs     = (document.getElementById('aud-obs').value || '').trim();
 
-  const reqs = [['aud-nome', nome], ['aud-atend', atend], ['aud-clinica', clinica], ['aud-medico', medico]];
+  const reqs = [['aud-nome', nome], ['aud-atend', atend], ['aud-clinica', clinica], ['aud-medico', medico], ['aud-data', data]];
   for (const [id, val] of reqs) {
     if (!val) { document.getElementById(id)?.focus(); showToast('Preencha os campos obrigatórios (*)', 'warning'); return; }
   }
