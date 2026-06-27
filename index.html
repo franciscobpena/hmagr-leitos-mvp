@@ -6567,6 +6567,8 @@ body.is-edit-focus [data-edit-focus] {
 .kf-review-header { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 10px; flex-wrap: wrap; gap: 8px; }
 .kf-review-title { font-size: 15px; font-weight: 600; }
 .kf-setor-badge { font-size: 12px; background: var(--bgSubtle, #1a1f2e); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; color: var(--textMuted); }
+.kf-setor-select { background: transparent; border: none; color: inherit; font-size: 12px; cursor: pointer; outline: none; max-width: 170px; font-family: inherit; }
+.kf-setor-duvida { color: #f59e0b; }
 .kf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .kf-table th { background: var(--bgSubtle, #1a1f2e); color: var(--textMuted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.4px; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .kf-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -27371,10 +27373,13 @@ function kfCalcStatus(dataAdm, dataPrevAlta) {
 /** Renderiza tabela de revisão (CA-03.1, CA-02.3, CA-03.4) */
 function kfRenderReview() {
   kfShowSection('review');
-  const setorLabel = kfState.confiancaSetor < 0.80
-    ? `${kfState.setorSigla || '?'} <span class="kf-duvida">❓</span>`
-    : (kfState.setorSigla || '?');
-  document.getElementById('kf-setor-badge').innerHTML = `${setorLabel} · ${kfState.dataKanban || '—'}`;
+  // [P0.2] Setor inline como <select> — elimina beco "setor null bloqueia"
+  const duvidaSetor = kfState.confiancaSetor < 0.80;
+  const setorOpts = Object.entries(KF_SETOR_SIGLAS).map(([k, v]) =>
+    `<option value="${k}" ${k === kfState.setorSigla ? 'selected' : ''}>${k} — ${v}</option>`
+  ).join('');
+  document.getElementById('kf-setor-badge').innerHTML =
+    `<select class="kf-setor-select${duvidaSetor ? ' kf-setor-duvida' : ''}" aria-label="Setor" onchange="kfState.setorSigla=this.value;kfState.setorNome=KF_SETOR_SIGLAS[this.value]||this.value;kfUpdateGravarBtn()"><option value="">— Setor ❓</option>${setorOpts}</select> · ${kfState.dataKanban || '—'}`;
   document.getElementById('kf-review-title').textContent = `Revisar ${kfState.pacientes.length} paciente${kfState.pacientes.length !== 1 ? 's' : ''} extraídos`;
 
   const tbody = document.getElementById('kf-review-tbody');
@@ -27407,11 +27412,11 @@ function kfUpdateGravarBtn() {
   const btn = document.getElementById('kf-btn-gravar');
   const lbl = document.getElementById('kf-pendentes-label');
   if (!btn) return;
-  btn.disabled = pendentes > 0 || semSetor;
+  btn.disabled = semSetor; // [P0.2] só bloqueia sem setor; ❓ não bloqueia mais
   btn.textContent = `Gravar ${kfState.pacientes.length} paciente${kfState.pacientes.length !== 1 ? 's' : ''}`;
   if (lbl) {
-    if (semSetor) lbl.textContent = 'Setor ❓ — confirme antes de gravar';
-    else if (pendentes > 0) lbl.textContent = `${pendentes} ❓ pendente${pendentes !== 1 ? 's' : ''}`;
+    if (semSetor) lbl.textContent = 'Escolha o setor para gravar';
+    else if (pendentes > 0) lbl.textContent = `${pendentes} campo${pendentes !== 1 ? 's' : ''} em branco — confira depois`;
     else lbl.textContent = '';
   }
 }
@@ -27523,6 +27528,13 @@ async function kfSemanticDedupEscolha(escolha) {
 
 /** Botão Gravar clicado (CA-03.3) */
 async function kfGravar() {
+  // [P0.2] Avisa campos em branco mas não bloqueia
+  const pendentes = kfState.pacientes.filter(p =>
+    KF_CAMPOS_ESSENCIAIS.some(f => (p.campos_baixa_confianca || []).includes(f))
+  ).length;
+  if (pendentes > 0 && typeof showToast === 'function') {
+    showToast(`${pendentes} campo${pendentes !== 1 ? 's' : ''} ficaram em branco — confira depois`, 'warning');
+  }
   const btn = document.getElementById('kf-btn-gravar');
   if (btn) btn.disabled = true;
 
