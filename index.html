@@ -27628,8 +27628,13 @@ async function kfExecutarGravacao() {
 
   // Sucesso
   kfShowSection('success');
+  const _n = kfState.pacientes.length;
+  const _s = kfState.setorNome || kfState.setorSigla || '?';
+  if (typeof showToast === 'function') showToast(`${_n} paciente${_n !== 1 ? 's' : ''} do ${_s} atualizados`, 'success'); // [P0.3]
   document.getElementById('kf-success-msg').innerHTML =
-    `✅ ${kfState.pacientes.length} paciente${kfState.pacientes.length !== 1 ? 's' : ''} do ${kfState.setorNome} gravados (${kfState.dataKanban}). <button type="button" onclick="renderKanbanFoto()" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0;font-weight:600;text-decoration:underline;min-height:44px">Enviar nova foto</button>`;
+    `✅ ${_n} paciente${_n !== 1 ? 's' : ''} do ${_s} gravados (${kfState.dataKanban}).` +
+    ` <button type="button" onclick="switchView('gestao-leitos','dashboard')" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0 8px 0 0;font-weight:600;text-decoration:underline;min-height:44px">Ver no painel →</button>` +
+    ` <button type="button" onclick="renderKanbanFoto()" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0;font-weight:600;text-decoration:underline;min-height:44px">Enviar nova foto</button>`;
 
   // Recarrega dados do dashboard em background
   if (typeof loadData === 'function') loadData();
