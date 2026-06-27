@@ -13,8 +13,9 @@ const HOSPITAL_ID = 'HMAGR';
 const SETORES_VALIDOS = ['CM', 'CT', 'CC1', 'CC2', 'OBS1', 'OBS2', 'UDC'];
 const SETOR_SIGLAS = { CM: 'Clínica Médica', CT: 'Clínica do Trauma', CC1: 'Clínica Cirúrgica 1', CC2: 'Clínica Cirúrgica 2', OBS1: 'Observação 1', OBS2: 'Observação 2', UDC: 'UDC' };
 
-// Modelo Anthropic — acurácia máxima em manuscrito clínico
-const ANTHROPIC_MODEL = 'claude-opus-4-8';
+// Modelo Anthropic — postura barata (decisão Maestro 26/jun); Sonnet lê manuscrito
+// razoável a ~0,6× do custo Opus. Trade-off: mais ❓/correção manual na revisão.
+const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 
 /** System prompt cacheável (>4096 tokens com few-shot inline) */
 function buildSystemPrompt() {
