@@ -6898,6 +6898,17 @@ body.is-edit-focus [data-edit-focus] {
       </div>
     <div class="home-cards">
 
+      <!-- [P0.1 Fase B] Captura do quadro físico — 1 clique da home à tela de upload -->
+      <a class="home-card" href="#/kanban/foto"
+         onclick="switchView('kanban'); return false;"
+         aria-label="Atualizar pelo quadro: tire a foto e o sistema preenche os leitos">
+        <div class="home-card-icon" aria-hidden="true"><i aria-hidden="true" data-lucide="camera"></i></div>
+        <h2>Atualizar pelo quadro</h2>
+        <p>Tire a foto do quadro e o sistema preenche os leitos automaticamente.</p>
+        <div class="home-card-sub">Foto · Revisão · Gravação</div>
+        <div class="home-card-cta">Ir para captura <i aria-hidden="true" data-lucide="arrow-right"></i></div>
+      </a>
+
       <!-- ============================================================
            [Fase 63] FLUXO DO PACIENTE (3 etapas em sequência)
            Macroprocesso Lean: Entrada → Decisão → Execução
