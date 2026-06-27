@@ -4951,8 +4951,7 @@ footer {
 /* ─────────────────────────────────────────────────────────────
    [Fase 12] View Agenda Lean — PDF embedded + atalhos
 ───────────────────────────────────────────────────────────── */
-#view-agenda-lean { display: none; }
-#view-agenda-lean main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+#view-auditoria { display: none; }
 .agenda-pdf-wrap {
   margin-top: 12px;
   border: 1px solid var(--border);
@@ -6695,9 +6694,16 @@ body.is-edit-focus [data-edit-focus] {
             <span class="recursos-item-desc">Iniciativas e plano de ação</span>
           </span>
         </button>
+        <button class="recursos-item" id="estrategico-auditoria" role="menuitem" onclick="switchView('auditoria'); closeEstrategicoMenu();">
+          <i aria-hidden="true" data-lucide="clipboard-check"></i>
+          <span class="recursos-item-label">
+            <span>Auditoria das evoluções</span>
+            <span class="recursos-item-desc">Qualidade dos prontuários</span>
+          </span>
+        </button>
       </div>
     </div>
-    <!-- [Fase 40] Dropdown Recursos: Agenda · Ferramentas · Pré-Works -->
+    <!-- [Fase 40] Dropdown Recursos: Ferramentas · Pré-Works -->
     <div class="nav-recursos-wrap">
       <button class="nav-tab nav-tab-recursos" id="tab-recursos" aria-haspopup="true" aria-expanded="false" aria-controls="nav-recursos-menu" onclick="toggleRecursosMenu(event)">
         <i aria-hidden="true" data-lucide="layers-3"></i>
@@ -6705,13 +6711,6 @@ body.is-edit-focus [data-edit-focus] {
         <i aria-hidden="true" data-lucide="chevron-down" class="chev"></i>
       </button>
       <div class="nav-recursos-menu" id="nav-recursos-menu" role="menu" aria-labelledby="tab-recursos">
-        <button class="recursos-item" id="recursos-agenda" role="menuitem" onclick="switchView('agenda-lean'); closeRecursosMenu();">
-          <i aria-hidden="true" data-lucide="calendar-days"></i>
-          <span class="recursos-item-label">
-            <span>Agenda e biblioteca</span>
-            <span class="recursos-item-desc">Visita, planejamento e materiais</span>
-          </span>
-        </button>
         <button class="recursos-item" id="recursos-ferramentas" role="menuitem" onclick="switchView('ferramentas'); closeRecursosMenu();">
           <i aria-hidden="true" data-lucide="wrench"></i>
           <span class="recursos-item-label">
@@ -6972,15 +6971,15 @@ body.is-edit-focus [data-edit-focus] {
         <div class="home-card-cta">Ver projetos <i aria-hidden="true" data-lucide="arrow-right"></i></div>
       </a>
 
-      <!-- [Fase 12/38] Agenda e biblioteca -->
-      <a class="home-card" href="#/agenda-lean"
-         onclick="switchView('agenda-lean'); return false;"
-         aria-label="Agenda e biblioteca: visitas, planejamento e materiais">
-        <div class="home-card-icon" aria-hidden="true"><i aria-hidden="true" data-lucide="calendar-days"></i></div>
-        <h2>Agenda e biblioteca</h2>
-        <p>Próxima visita, planejamento anual e material de referência num lugar só.</p>
-        <div class="home-card-sub">Visitas · Planejamento · Materiais</div>
-        <div class="home-card-cta">Ver agenda <i aria-hidden="true" data-lucide="arrow-right"></i></div>
+      <!-- [Fase A HMAGR] Auditoria das evoluções -->
+      <a class="home-card" href="#/auditoria"
+         onclick="switchView('auditoria'); return false;"
+         aria-label="Auditoria das evoluções: qualidade dos prontuários">
+        <div class="home-card-icon" aria-hidden="true"><i aria-hidden="true" data-lucide="clipboard-check"></i></div>
+        <h2>Auditoria das evoluções</h2>
+        <p>Registro e análise de não conformidades nas evoluções padrão dos prontuários.</p>
+        <div class="home-card-sub">Registrar · Análise · PDF</div>
+        <div class="home-card-cta">Ver auditoria <i aria-hidden="true" data-lucide="arrow-right"></i></div>
       </a>
 
       <!-- [Fase 17] Pré-Works -->
@@ -7877,16 +7876,127 @@ body.is-edit-focus [data-edit-focus] {
 </div><!-- #view-kaizens -->
 
 <!-- ═══════════════════════════════════════════════════════════
-     VIEW: AGENDA LEAN [Fase 12]
+     [Fase A HMAGR] VIEW: Auditoria das evoluções de internação
+     Portada do HMSA 2026-06-22. Tabela: auditoria_evolucoes_hmagr
 ═══════════════════════════════════════════════════════════ -->
-<div id="view-agenda-lean">
+<div id="view-auditoria" style="display:none">
   <main>
-    <section id="agenda-lean-content">
-      <!-- [Fase 13] Populado por renderAgendaLean() -->
+    <div class="view-header" style="margin-bottom:16px">
+      <h1 style="font-size:18px;display:flex;align-items:center;gap:10px"><i data-lucide="clipboard-check" aria-hidden="true"></i> Auditoria das evoluções de internação</h1>
+      <p style="font-size:12px;color:var(--textMuted)">Registro de não conformidades nas evoluções padrão dos prontuários. Marque só os itens NÃO conformes.</p>
+    </div>
+    <!-- [Auditoria sub-tabs] Registrar (form) · Análise (KPIs+gráficos+cards+PDF) -->
+    <div class="sub-tabs-row" id="sub-tabs-auditoria" style="display:none">
+      <button class="sub-tab" id="tab-sub-aud-registro" onclick="switchView('auditoria','registro')"><i data-lucide="clipboard-pen" aria-hidden="true"></i> Registrar</button>
+      <button class="sub-tab" id="tab-sub-aud-analise" onclick="switchView('auditoria','analise')"><i data-lucide="bar-chart-3" aria-hidden="true"></i> Análise</button>
+    </div>
+    <div id="auditoria-registro-panel">
+    <section id="auditoria-form-mount">
+      <style>
+        .aud-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+        .aud-id-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
+        .aud-field { display:flex; flex-direction:column; }
+        .aud-field label { font-size:11px; color:var(--textMuted); margin-bottom:3px; }
+        .aud-check-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:8px; margin-top:8px; }
+        .aud-item { display:flex; align-items:center; gap:8px; width:100%; min-height:44px; padding:8px 12px;
+          background:var(--bg,#0f172a); border:1.5px solid var(--border); border-radius:8px; color:var(--text,#e2e8f0);
+          font-size:13px; text-align:left; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+          transition:border-color .15s cubic-bezier(0.23,1,0.32,1), background-color .15s cubic-bezier(0.23,1,0.32,1), transform .12s cubic-bezier(0.23,1,0.32,1); }
+        .aud-item:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+        .aud-item:active { transform:scale(0.985); }
+        .aud-item .aud-item-ico { color:#22c55e; flex:0 0 auto; width:16px; height:16px; }
+        .aud-item .aud-item-label { flex:1 1 auto; min-width:0; }
+        .aud-item .aud-item-state { font-size:11px; color:#4ade80; font-weight:600; white-space:nowrap; }
+        .aud-item.nc { border-color:#ef4444; background:rgba(239,68,68,0.10); }
+        .aud-item.nc .aud-item-ico { color:#f87171; }
+        .aud-item.nc .aud-item-state { color:#f87171; }
+        .aud-pct-badge { margin-left:auto; font-size:12px; font-weight:700; padding:3px 12px; border-radius:999px; background:#22c55e; color:#04210f; transition:background-color .2s ease, color .2s ease; }
+        /* F4/F5 — KPIs, filtros, cards, charts */
+        .aud-summary-head { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+        .aud-summary-title { font-size:13px; color:var(--textMuted); }
+        .aud-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
+        .aud-kpi { display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+        .aud-kpi-ico { flex:0 0 auto; width:38px; height:38px; border-radius:9px; display:grid; place-items:center; background:var(--tint-teal-card); color:var(--teal); }
+        .aud-kpi-ico i { width:19px; height:19px; }
+        .aud-kpi-body { min-width:0; }
+        .aud-kpi .v { font-size:24px; font-weight:700; line-height:1.05; color:var(--textPrimary); font-variant-numeric:tabular-nums; }
+        .aud-kpi .v small { font-size:13px; font-weight:600; color:var(--textMuted); margin-left:1px; }
+        .aud-kpi .v.v-text { font-size:14px; line-height:1.25; font-weight:600; }
+        .aud-kpi .l { font-size:11px; color:var(--textMuted); margin-top:3px; }
+        .aud-filterbar { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:12px; }
+        .aud-filterbar .aud-field { min-width:140px; }
+        .aud-charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
+        .aud-chart-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+        .aud-chart-card h3 { font-size:13px; margin:0 0 8px; color:var(--text,#e2e8f0); display:flex; align-items:center; gap:6px; }
+        .aud-chart-wrap { position:relative; height:240px; }
+        .aud-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+        .aud-card-item { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; transition:border-color .15s ease; }
+        .aud-card-item.sev-hi { border-color:rgba(239,68,68,0.45); }
+        .aud-card-item.sev-mid { border-color:rgba(245,158,11,0.45); }
+        .aud-card-item .top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+        .aud-card-item .nome { font-weight:600; font-size:14px; }
+        .aud-card-item .meta { font-size:11px; color:var(--textMuted); margin-top:2px; }
+        .aud-card-pct { font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+        .aud-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+        .aud-chip { font-size:10px; padding:2px 7px; border-radius:999px; background:rgba(239,68,68,0.12); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+        .aud-empty { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; color:var(--textMuted); padding:32px 24px; font-size:13px; }
+        .aud-empty i { width:30px; height:30px; opacity:0.55; }
+        .aud-empty p { margin:0; font-weight:600; color:var(--textPrimary); }
+        .aud-empty span { font-size:12px; }
+        .aud-empty .btn { margin-top:4px; }
+        @keyframes aud-fade-up { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+        .aud-reveal > section { animation: aud-fade-up .26s var(--ease-out) both; }
+        .aud-reveal > section:nth-child(2) { animation-delay:.05s; }
+        .aud-reveal > section:nth-child(3) { animation-delay:.10s; }
+        .aud-card-actions { display:flex; gap:6px; justify-content:flex-end; margin-top:10px; }
+        .aud-icon-btn { background:transparent; border:1px solid var(--border); color:var(--textMuted); border-radius:6px; width:34px; height:34px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; touch-action:manipulation; -webkit-tap-highlight-color:transparent; transition:border-color .15s ease, color .15s ease, transform .12s cubic-bezier(0.23,1,0.32,1); }
+        .aud-icon-btn:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+        .aud-icon-btn:active { transform:scale(0.92); }
+        .aud-icon-btn i { width:15px; height:15px; }
+        @media (hover:hover) {
+          .aud-item:hover { border-color:var(--teal); }
+          .aud-icon-btn:hover { border-color:var(--teal); color:var(--teal); }
+          .aud-icon-btn.danger:hover { border-color:#ef4444; color:#ef4444; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .aud-item, .aud-icon-btn, .aud-pct-badge, .aud-card-item { transition:none; }
+          .aud-item:active, .aud-icon-btn:active { transform:none; }
+          .aud-reveal > section { animation:none; }
+        }
+      </style>
+      <div class="aud-card">
+        <div class="sec-title"><span><i data-lucide="user-check" aria-hidden="true"></i> Nova auditoria</span></div>
+        <div class="aud-id-grid">
+          <div class="aud-field"><label>Data *</label><input type="date" id="aud-data" class="ins-cell"></div>
+          <div class="aud-field"><label>Auditor</label><input type="text" id="aud-auditor" class="ins-cell" placeholder="Opcional" autocomplete="off"></div>
+          <div class="aud-field"><label>Nome do paciente *</label><input type="text" id="aud-nome" class="ins-cell" autocomplete="off"></div>
+          <div class="aud-field"><label>Nº atendimento *</label><input type="number" id="aud-atend" class="ins-cell" inputmode="numeric" autocomplete="off"></div>
+          <div class="aud-field"><label>Clínica *</label><select id="aud-clinica" class="ins-cell"><option value="">— escolha —</option></select></div>
+          <div class="aud-field"><label>Médico responsável *</label><input type="text" id="aud-medico" class="ins-cell" autocomplete="off"></div>
+        </div>
+        <div class="sec-title" style="margin-top:14px;display:flex;align-items:center;gap:8px">
+          <span><i data-lucide="list-checks" aria-hidden="true"></i> Evolução padrão — marque só os itens NÃO conformes</span>
+          <span id="aud-pct-badge" class="aud-pct-badge">0% NC</span>
+        </div>
+        <div id="aud-checklist" class="aud-check-grid"></div>
+        <div class="aud-id-grid" style="margin-top:12px">
+          <div class="aud-field" style="grid-column:1/-1"><label>Observações</label><input type="text" id="aud-obs" class="ins-cell" placeholder="Opcional" autocomplete="off"></div>
+        </div>
+        <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-ghost" id="aud-btn-cancelar" onclick="audCancelarEdicao()" style="display:none">Cancelar edição</button>
+          <button class="btn btn-primary" id="aud-btn-salvar" onclick="audSalvar()"><i data-lucide="check" aria-hidden="true"></i> Salvar auditoria</button>
+        </div>
+      </div>
     </section>
+    </div><!-- #auditoria-registro-panel -->
+    <div id="auditoria-analise-panel" style="display:none">
+    <section id="auditoria-kpis-mount" style="margin-top:16px"><!-- KPIs --></section>
+    <section id="auditoria-charts-mount" style="margin-top:16px"><!-- Pareto --></section>
+    <section id="auditoria-cards-mount" style="margin-top:16px"><!-- cards + filtros --></section>
+    </div><!-- #auditoria-analise-panel -->
   </main>
   <div class="footer-mount"></div>
-</div><!-- #view-agenda-lean -->
+</div><!-- #view-auditoria -->
 
 <!-- ═══════════════════════════════════════════════════════════
      VIEW: FERRAMENTAS [Fase 15]
@@ -17323,6 +17433,7 @@ function switchView(view, subView, subSubView) {
   if (view === 'analise-boarding' && !subView) subView = 'inserir';  // [Onda 5] default sub apos remocao de visao-geral
   if (view === 'internacoes' && !subView) subView = 'lista';  // [Fase 52] default sub
   if (view === 'retaguarda-ps' && !subView) subView = 'fila';  // [Entrega 2 — 2026-05-07] default sub
+  if (view === 'auditoria' && !subView) subView = 'registro';  // [Fase A HMAGR] default sub
   currentView = view;
   currentSubView = subView || null;
   currentSubSubView = subSubView || null;
@@ -17332,7 +17443,7 @@ function switchView(view, subView, subSubView) {
 
   // ─── Esconder TODAS as views ───
   // [Fase 50/51/52 + Maestro 05/mai] internacoes-fila adicionada (criada dinâmica, antes ficava órfã)
-  ['home','dashboard','action-plan','indicadores','kaizens','agenda-lean','ferramentas','preworks','simulador-nedocs','analise-visao-geral','analise-raio-x','analise-listas','analise-insercao','analise-historico','internacoes-lista','internacoes-fila','internacoes-conferencias','internacoes-dicionario','maturidade-nir','maturidade-nir-detalhe','maturidade-nir-historico','cockpit-nir','retaguarda-fila','retaguarda-cards','retaguarda-historico','kanban-foto'].forEach(v => {
+  ['home','dashboard','action-plan','indicadores','kaizens','auditoria','ferramentas','preworks','simulador-nedocs','analise-visao-geral','analise-raio-x','analise-listas','analise-insercao','analise-historico','internacoes-lista','internacoes-fila','internacoes-conferencias','internacoes-dicionario','maturidade-nir','maturidade-nir-detalhe','maturidade-nir-historico','cockpit-nir','retaguarda-fila','retaguarda-cards','retaguarda-historico','kanban-foto'].forEach(v => {
     const el = document.getElementById('view-' + v);
     if (el) el.style.display = 'none';
   });
@@ -17345,10 +17456,10 @@ function switchView(view, subView, subSubView) {
     document.getElementById('view-indicadores').style.display = 'block';
   } else if (view === 'kaizens') {
     document.getElementById('view-kaizens').style.display = 'block';
-  } else if (view === 'agenda-lean') {
-    // [Fase 12 / Fase 13]
-    document.getElementById('view-agenda-lean').style.display = 'block';
-    if (typeof renderAgendaLean === 'function') renderAgendaLean();
+  } else if (view === 'auditoria') {
+    // [Fase A HMAGR] Auditoria das evoluções
+    document.getElementById('view-auditoria').style.display = 'block';
+    if (typeof renderAuditoria === 'function') renderAuditoria(subView);
   } else if (view === 'ferramentas') {
     // [Fase 15]
     document.getElementById('view-ferramentas').style.display = 'block';
@@ -17474,11 +17585,19 @@ function switchView(view, subView, subSubView) {
 
   // ─── Active state das tabs principais ───
   // [Fase 64.1 A1] tab-indicadores e tab-kaizens viraram itens do dropdown Estratégico — active state migrou pra has-active-child no pai
-  const estrategicoViews = ['indicadores', 'kaizens'];
+  const estrategicoViews = ['indicadores', 'kaizens', 'auditoria'];
   const tabEstrategico = document.getElementById('tab-estrategico');
   if (tabEstrategico) tabEstrategico.classList.toggle('has-active-child', estrategicoViews.includes(view));
   document.getElementById('estrategico-indicadores')?.classList.toggle('is-active', view === 'indicadores');
   document.getElementById('estrategico-kaizens')?.classList.toggle('is-active', view === 'kaizens');
+  document.getElementById('estrategico-auditoria')?.classList.toggle('is-active', view === 'auditoria');
+  // [Fase A HMAGR] Sub-tabs Auditoria
+  const subTabsAud = document.getElementById('sub-tabs-auditoria');
+  if (subTabsAud) subTabsAud.style.display = (view === 'auditoria') ? 'flex' : 'none';
+  const tabSubAudReg = document.getElementById('tab-sub-aud-registro');
+  if (tabSubAudReg) tabSubAudReg.classList.toggle('active', view === 'auditoria' && subView === 'registro');
+  const tabSubAudAna = document.getElementById('tab-sub-aud-analise');
+  if (tabSubAudAna) tabSubAudAna.classList.toggle('active', view === 'auditoria' && subView === 'analise');
   document.getElementById('tab-gestao-leitos').classList.toggle('active', isGestao);
   // [Fase 2 HMAGR] Sub-tab kanban-foto active state
   const tabSubKanbanFoto = document.getElementById('tab-sub-kanban-foto');
@@ -17530,10 +17649,9 @@ function switchView(view, subView, subSubView) {
   if (typeof _atualizarFluxoStepper === 'function') _atualizarFluxoStepper();
 
   // [Fase 40] Sync do grupo Recursos (dropdown): marca pai + filho ativo
-  const recursosViews = ['agenda-lean', 'ferramentas', 'preworks'];
+  const recursosViews = ['ferramentas', 'preworks'];
   const tabRecursos = document.getElementById('tab-recursos');
   if (tabRecursos) tabRecursos.classList.toggle('has-active-child', recursosViews.includes(view));
-  document.getElementById('recursos-agenda')?.classList.toggle('is-active', view === 'agenda-lean');
   document.getElementById('recursos-ferramentas')?.classList.toggle('is-active', view === 'ferramentas');
   document.getElementById('recursos-preworks')?.classList.toggle('is-active', view === 'preworks');
 
@@ -26886,7 +27004,7 @@ function parseHash() {
   const view = parts[0];
 
   // [Fase 12/15/41/48/50/52/60] views válidas; 'cadastro' redireciona pra analise-boarding/listas
-  const validViews = ['home', 'indicadores', 'kaizens', 'gestao-leitos', 'agenda-lean', 'ferramentas', 'preworks', 'simulador-nedocs', 'analise-boarding', 'cadastro', 'internacoes', 'maturidade-nir', 'cockpit-nir', 'retaguarda-ps', 'kanban'];
+  const validViews = ['home', 'indicadores', 'kaizens', 'gestao-leitos', 'auditoria', 'ferramentas', 'preworks', 'simulador-nedocs', 'analise-boarding', 'cadastro', 'internacoes', 'maturidade-nir', 'cockpit-nir', 'retaguarda-ps', 'kanban'];
   if (!validViews.includes(view)) return { view: 'home', subView: null, subSubView: null, id: null };
 
   // [Fase 2 HMAGR] kanban/foto — pipeline foto→OCR
@@ -26933,9 +27051,11 @@ function parseHash() {
     return { view: 'analise-boarding', subView: 'inserir', subSubView: null, id: null };
   }
 
-  // [Fase 12] agenda-lean: sem subView, sem id
-  if (view === 'agenda-lean') {
-    return { view, subView: null, id: null };
+  // [Fase A HMAGR] auditoria: subView = registro (default) | analise
+  if (view === 'auditoria') {
+    const validSubs = ['registro', 'analise'];
+    const subView = validSubs.includes(parts[1]) ? parts[1] : 'registro';
+    return { view, subView, subSubView: null, id: null };
   }
 
   // [Fase 15] ferramentas: sem subView, sem id
@@ -27498,8 +27618,6 @@ async function kfExecutarGravacao() {
 document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) lucide.createIcons();
   applyHashRoute();                // [Fase 3.1] navega pela URL atual (default = home)
-  // [Fase 13] Garante render da Agenda Lean caso a URL inicial seja agenda-lean
-  if (location.hash === '#/agenda-lean' && typeof renderAgendaLean === 'function') renderAgendaLean();
   // [Fase 15] Garante render de Ferramentas caso a URL inicial seja ferramentas
   if (location.hash === '#/ferramentas' && typeof renderFerramentas === 'function') renderFerramentas();
   // [Fase 17] Garante render de Pré-Works caso a URL inicial seja preworks
@@ -27763,6 +27881,716 @@ document.addEventListener('keydown', (e) => {
   </svg>
   <span class="wa-label">Fale com o Especialista</span>
 </a>
+
+<!-- ═══════════════════════════════════════════════════════════
+     [Fase A HMAGR] AUDITORIA DAS EVOLUÇÕES — lógica/CRUD
+     Portado do HMSA 2026-06-22. Desacoplamento: AUD_TABLE → hmagr,
+     audPopularClinicas → hospital_id=eq.${HOSPITAL_ID}
+═══════════════════════════════════════════════════════════ -->
+<script>
+const AUD_TABLE = 'auditoria_evolucoes_hmagr';
+const AUD_ITENS = [
+  { key:'nc_motivo_internacao',        label:'Motivo internação' },
+  { key:'nc_hda',                      label:'HDA' },
+  { key:'nc_hpp_alergias_medicacoes',  label:'HPP / Alergias / Medicações' },
+  { key:'nc_exame_fisico',             label:'Exame físico' },
+  { key:'nc_exames_imagem',            label:'Exames complementares — imagem' },
+  { key:'nc_exames_laboratoriais',     label:'Exames complementares — laboratoriais' },
+  { key:'nc_avaliacao',                label:'Avaliação' },
+  { key:'nc_conduta',                  label:'Conduta' },
+  { key:'nc_pendencias',               label:'Pendências' },
+  { key:'nc_programacao_cirurgica',    label:'Programação cirúrgica' },
+  { key:'nc_previsao_alta',            label:'Previsão de alta' },
+];
+let AUD_DATA = [];
+
+async function renderAuditoria(subView) {
+  subView = subView || 'registro';
+  audSetDefaultData();
+  audRenderChecklist();
+  await audPopularClinicas();
+  if (typeof refreshIcons === 'function') refreshIcons();
+  else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+  await audCarregarEListar();
+  audMostrarSubAba(subView);
+}
+
+function audMostrarSubAba(sv) {
+  const reg = document.getElementById('auditoria-registro-panel');
+  const ana = document.getElementById('auditoria-analise-panel');
+  const isAna = (sv === 'analise');
+  if (reg) reg.style.display = isAna ? 'none' : '';
+  if (ana) ana.style.display = isAna ? '' : 'none';
+  if (isAna) {
+    audRenderDashboard();
+    if (ana) { ana.classList.remove('aud-reveal'); void ana.offsetWidth; ana.classList.add('aud-reveal'); }
+  } else {
+    setTimeout(() => document.getElementById('aud-nome')?.focus(), 50);
+  }
+}
+
+function audSetDefaultData() {
+  const el = document.getElementById('aud-data');
+  if (el && !el.value) {
+    const h = new Date();
+    el.value = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
+  }
+}
+
+async function audPopularClinicas() {
+  const sel = document.getElementById('aud-clinica');
+  if (!sel || sel.dataset.loaded === '1') return;
+  try {
+    const url = `${SB_URL}/rest/v1/cadastro_especialidades?hospital_id=eq.${HOSPITAL_ID}&ativo=eq.true&select=nome&order=nome`;
+    const resp = await fetch(url, { headers: SB_H });
+    const rows = await resp.json();
+    const nomes = [...new Set((Array.isArray(rows) ? rows : []).map(r => r.nome).filter(Boolean))];
+    sel.innerHTML = '<option value="">— escolha —</option>' +
+      nomes.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    sel.dataset.loaded = '1';
+  } catch (e) { console.warn('[auditoria] falha ao carregar clínicas', e); }
+}
+
+function audRenderChecklist() {
+  const wrap = document.getElementById('aud-checklist');
+  if (!wrap) return;
+  wrap.innerHTML = AUD_ITENS.map(it => `
+    <button type="button" class="aud-item" role="checkbox" aria-checked="false" data-key="${it.key}" onclick="audToggle(this)">
+      <i class="aud-item-ico" data-lucide="check" aria-hidden="true"></i>
+      <span class="aud-item-label">${it.label}</span>
+      <span class="aud-item-state">Conforme</span>
+    </button>`).join('');
+  if (typeof refreshIcons === 'function') refreshIcons();
+  else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+  audAtualizarPct();
+}
+
+function audSetItem(btn, isNc) {
+  btn.setAttribute('aria-checked', isNc ? 'true' : 'false');
+  btn.classList.toggle('nc', isNc);
+  const ico = btn.querySelector('.aud-item-ico');
+  const st  = btn.querySelector('.aud-item-state');
+  if (ico) ico.setAttribute('data-lucide', isNc ? 'alert-triangle' : 'check');
+  if (st)  st.textContent = isNc ? 'Não conforme' : 'Conforme';
+}
+
+function audToggle(btn) {
+  audSetItem(btn, btn.getAttribute('aria-checked') !== 'true');
+  if (typeof refreshIcons === 'function') refreshIcons();
+  else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+  audAtualizarPct();
+}
+
+function audAtualizarPct() {
+  const itens = document.querySelectorAll('#aud-checklist .aud-item');
+  const nc = document.querySelectorAll('#aud-checklist .aud-item[aria-checked="true"]').length;
+  const total = itens.length || 11;
+  const pct = Math.round(nc / total * 100);
+  const badge = document.getElementById('aud-pct-badge');
+  if (!badge) return;
+  badge.textContent = `${pct}% NC (${nc}/${total})`;
+  let bg = '#22c55e', fg = '#04210f';
+  if (pct > 0 && pct <= 20) { bg = '#f59e0b'; fg = '#3a2602'; }
+  else if (pct > 20) { bg = '#ef4444'; fg = '#ffffff'; }
+  badge.style.background = bg;
+  badge.style.color = fg;
+}
+
+let AUD_EDIT_ID = null;
+let AUD_EDIT_UPDATED_AT = null;
+
+async function audSalvar() {
+  const nome    = (document.getElementById('aud-nome').value || '').trim();
+  const atend   = (document.getElementById('aud-atend').value || '').trim();
+  const clinica = (document.getElementById('aud-clinica').value || '').trim();
+  const medico  = (document.getElementById('aud-medico').value || '').trim();
+  const data    = document.getElementById('aud-data').value;
+  const auditor = (document.getElementById('aud-auditor').value || '').trim();
+  const obs     = (document.getElementById('aud-obs').value || '').trim();
+
+  const reqs = [['aud-nome', nome], ['aud-atend', atend], ['aud-clinica', clinica], ['aud-medico', medico]];
+  for (const [id, val] of reqs) {
+    if (!val) { document.getElementById(id)?.focus(); showToast('Preencha os campos obrigatórios (*)', 'warning'); return; }
+  }
+
+  if (typeof isEditAuthed === 'function' && !isEditAuthed() && typeof requireEditAuth === 'function') {
+    requireEditAuth(() => audSalvar());
+    return;
+  }
+
+  const editando = AUD_EDIT_ID != null;
+  const btn = document.getElementById('aud-btn-salvar');
+  if (btn) btn.disabled = true;
+  try {
+    await ensureHmsaToken();
+    let checkUrl = `${SB_URL}/rest/v1/${AUD_TABLE}?hospital_id=eq.${HOSPITAL_ID}&atendimento=eq.${encodeURIComponent(atend)}&select=id&limit=1`;
+    if (editando) checkUrl += `&id=neq.${encodeURIComponent(AUD_EDIT_ID)}`;
+    const existing = await (await fetch(checkUrl, { headers: SB_H })).json();
+    if (Array.isArray(existing) && existing.length > 0) {
+      showToast(`Atendimento ${atend} já tem auditoria registrada`, 'error');
+      if (btn) btn.disabled = false;
+      return;
+    }
+    const payload = {
+      hospital_id: HOSPITAL_ID,
+      data_auditoria: data || null,
+      auditor: auditor || null,
+      nome_paciente: nome,
+      atendimento: atend,
+      clinica: clinica,
+      medico_responsavel: medico,
+      observacoes: obs || null,
+    };
+    document.querySelectorAll('#aud-checklist .aud-item').forEach(el => {
+      payload[el.dataset.key] = el.getAttribute('aria-checked') === 'true';
+    });
+
+    if (editando) {
+      payload.updated_at = new Date().toISOString();
+      const res = await sbPatchOptimistic(AUD_TABLE, AUD_EDIT_ID, AUD_EDIT_UPDATED_AT, payload, 'auditoria-edit');
+      if (res && res.conflict) { showToast('Auditoria alterada por outra sessão. Recarregue.', 'error'); if (btn) btn.disabled = false; return; }
+      if (!res || !res.ok) { showToast('Erro ao atualizar', 'error'); if (btn) btn.disabled = false; return; }
+      showToast('✓ Auditoria atualizada', 'success');
+      audCancelarEdicao();
+      await audCarregarEListar();
+    } else {
+      const resp = await fetch(`${SB_URL}/rest/v1/${AUD_TABLE}`, {
+        method: 'POST',
+        headers: { ...SB_H, 'Prefer': 'return=representation' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        console.warn('[auditoria] POST falhou', resp.status, txt);
+        showToast(`Erro ao salvar: ${resp.status}`, 'error');
+        if (btn) btn.disabled = false;
+        return;
+      }
+      showToast('✓ Auditoria salva', 'success');
+      audResetParcial();
+      await audCarregarEListar();
+    }
+  } catch (e) {
+    console.warn('[auditoria] erro', e);
+    showToast('Erro de rede ao salvar', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function audResetParcial() {
+  ['aud-nome', 'aud-atend', 'aud-obs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  audRenderChecklist();
+  document.getElementById('aud-nome')?.focus();
+}
+
+function audEditar(id) {
+  if (typeof isEditAuthed === 'function' && !isEditAuthed() && typeof requireEditAuth === 'function') {
+    requireEditAuth(() => audEditar(id)); return;
+  }
+  const row = AUD_DATA.find(r => r.id === id);
+  if (!row) { showToast('Auditoria não encontrada', 'error'); return; }
+  document.getElementById('aud-data').value = row.data_auditoria || '';
+  document.getElementById('aud-auditor').value = row.auditor || '';
+  document.getElementById('aud-nome').value = row.nome_paciente || '';
+  document.getElementById('aud-atend').value = row.atendimento || '';
+  document.getElementById('aud-medico').value = row.medico_responsavel || '';
+  document.getElementById('aud-obs').value = row.observacoes || '';
+  const clin = document.getElementById('aud-clinica');
+  if (clin) clin.value = row.clinica || '';
+  document.querySelectorAll('#aud-checklist .aud-item').forEach(btn => audSetItem(btn, row[btn.dataset.key] === true));
+  audAtualizarPct();
+  AUD_EDIT_ID = id;
+  AUD_EDIT_UPDATED_AT = row.updated_at || null;
+  const sv = document.getElementById('aud-btn-salvar');
+  if (sv) sv.innerHTML = '<i data-lucide="save" aria-hidden="true"></i> Atualizar auditoria';
+  const cancel = document.getElementById('aud-btn-cancelar');
+  if (cancel) cancel.style.display = '';
+  if (typeof refreshIcons === 'function') refreshIcons();
+  document.getElementById('view-auditoria')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast('Editando — altere os campos e clique Atualizar', 'info');
+}
+
+function audCancelarEdicao() {
+  AUD_EDIT_ID = null;
+  AUD_EDIT_UPDATED_AT = null;
+  const sv = document.getElementById('aud-btn-salvar');
+  if (sv) sv.innerHTML = '<i data-lucide="check" aria-hidden="true"></i> Salvar auditoria';
+  const cancel = document.getElementById('aud-btn-cancelar');
+  if (cancel) cancel.style.display = 'none';
+  audResetParcial();
+  if (typeof refreshIcons === 'function') refreshIcons();
+}
+
+async function audExcluir(id) {
+  if (typeof isEditAuthed === 'function' && !isEditAuthed() && typeof requireEditAuth === 'function') {
+    requireEditAuth(() => audExcluir(id)); return;
+  }
+  const row = AUD_DATA.find(r => r.id === id);
+  const nome = row ? (row.nome_paciente || 'sem nome') : '';
+  const atend = row ? (row.atendimento || '') : '';
+  if (!confirm(`Excluir a auditoria de ${nome} (atend. ${atend})? Não dá pra desfazer.`)) return;
+  try {
+    await ensureHmsaToken();
+    const resp = await fetch(`${SB_URL}/rest/v1/${AUD_TABLE}?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: SB_H });
+    if (!resp.ok) { showToast(`Erro ao excluir: ${resp.status}`, 'error'); return; }
+    showToast('Auditoria excluída', 'success');
+    if (AUD_EDIT_ID === id) audCancelarEdicao();
+    await audCarregarEListar();
+  } catch (e) { console.warn('[auditoria] excluir', e); showToast('Erro de rede ao excluir', 'error'); }
+}
+
+async function audCarregarEListar() {
+  try {
+    const url = `${SB_URL}/rest/v1/${AUD_TABLE}?hospital_id=eq.${HOSPITAL_ID}&select=*&order=created_at.desc&limit=2000`;
+    const rows = await (await fetch(url, { headers: SB_H })).json();
+    AUD_DATA = Array.isArray(rows) ? rows : [];
+  } catch (e) { AUD_DATA = []; console.warn('[auditoria] load lista', e); }
+  const ana = document.getElementById('auditoria-analise-panel');
+  if (ana && ana.style.display !== 'none' && typeof audRenderDashboard === 'function') audRenderDashboard();
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    const v = document.getElementById('view-auditoria');
+    if (v && v.style.display !== 'none') { e.preventDefault(); audSalvar(); }
+  }
+});
+</script>
+
+<!-- [Fase A HMAGR] AUDITORIA — dashboard (KPIs + filtros + cards + Pareto + PDF) -->
+<script>
+const AUD_LABEL = {};
+AUD_ITENS.forEach(it => { AUD_LABEL[it.key] = it.label; });
+let audCharts = { motivos: null, esp: null, mensal: null };
+
+function audCss(name, fallback) {
+  try { const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return v || fallback; }
+  catch (e) { return fallback; }
+}
+function audReduceMotion() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+function audChartAnim() {
+  return audReduceMotion() ? false : { duration: 600, easing: 'easeOutQuart' };
+}
+function audTooltipStyle() {
+  return {
+    backgroundColor: audCss('--header', '#0A1628'),
+    borderColor: audCss('--border', '#1E3A5F'),
+    borderWidth: 1,
+    titleColor: audCss('--textPrimary', '#E2E8F0'),
+    bodyColor: audCss('--textMuted', '#B8C4D6'),
+    padding: 10, cornerRadius: 8, boxPadding: 4, usePointStyle: true,
+  };
+}
+const audBarLabels = {
+  id: 'audBarLabels',
+  afterDatasetsDraw(chart) {
+    const ds = chart.data.datasets[0];
+    if (!ds || ds.type === 'line') return;
+    const meta = chart.getDatasetMeta(0);
+    if (meta.hidden) return;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif';
+    ctx.fillStyle = audCss('--textPrimary', '#E2E8F0');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    meta.data.forEach((bar, i) => {
+      const v = ds.data[i];
+      if (v == null) return;
+      ctx.fillText(String(v), bar.x, bar.y - 4);
+    });
+    ctx.restore();
+  },
+};
+const audLineLabels = {
+  id: 'audLineLabels',
+  afterDatasetsDraw(chart) {
+    const ds = chart.data.datasets[0];
+    if (!ds) return;
+    const meta = chart.getDatasetMeta(0);
+    if (meta.hidden) return;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = '600 10px ui-sans-serif, system-ui, sans-serif';
+    ctx.fillStyle = audCss('--textPrimary', '#E2E8F0');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    meta.data.forEach((pt, i) => {
+      const v = ds.data[i];
+      if (v == null) return;
+      ctx.fillText(v + '%', pt.x, pt.y - 8);
+    });
+    ctx.restore();
+  },
+};
+const audPareto80 = {
+  id: 'audPareto80',
+  afterDatasetsDraw(chart) {
+    const y1 = chart.scales.y1;
+    if (!y1 || !chart.chartArea) return;
+    const y = y1.getPixelForValue(80);
+    const { left, right } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(184,196,214,0.55)';
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(184,196,214,0.8)';
+    ctx.font = '600 10px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('80%', right - 3, y - 3);
+    ctx.restore();
+  },
+};
+
+function audPct(row)    { return Math.round((row.total_nc || 0) / AUD_ITENS.length * 100); }
+function audNcKeys(row) { return AUD_ITENS.filter(it => row[it.key] === true).map(it => it.key); }
+
+function audRenderDashboard() {
+  audRenderKpis();
+  audBuildFilterbar();
+  audAplicarEFiltrar();
+  if (typeof refreshIcons === 'function') refreshIcons();
+}
+
+function audRenderKpis() {
+  const mount = document.getElementById('auditoria-kpis-mount');
+  if (!mount) return;
+  const n = AUD_DATA.length;
+  const pctMedio = n ? Math.round(AUD_DATA.reduce((s, r) => s + audPct(r), 0) / n) : 0;
+  const cont = {};
+  AUD_ITENS.forEach(it => { cont[it.key] = 0; });
+  AUD_DATA.forEach(r => AUD_ITENS.forEach(it => { if (r[it.key] === true) cont[it.key]++; }));
+  let topItem = '—', topN = 0;
+  Object.entries(cont).forEach(([k, v]) => { if (v > topN) { topN = v; topItem = AUD_LABEL[k]; } });
+  const sev = pctMedio > 20 ? 'hi' : pctMedio > 0 ? 'mid' : 'ok';
+  const pctColor = sev === 'hi' ? 'var(--red)' : sev === 'mid' ? 'var(--amber)' : 'var(--green)';
+  const pctBg    = sev === 'hi' ? 'var(--f3-bg)' : sev === 'mid' ? 'var(--f2-bg)' : 'var(--f0-bg)';
+  const pctIco   = sev === 'hi' ? 'alert-triangle' : sev === 'mid' ? 'alert-circle' : 'shield-check';
+  mount.innerHTML = `
+    <div class="aud-summary-head">
+      <div class="aud-summary-title">Resumo${n ? ` · ${n} auditoria${n === 1 ? '' : 's'}` : ''}</div>
+      <button class="btn btn-ghost" id="aud-btn-pdf" onclick="audExportarPDF()"><i data-lucide="file-down" aria-hidden="true"></i> Baixar PDF</button>
+    </div>
+    <div class="aud-kpis">
+      <div class="aud-kpi">
+        <span class="aud-kpi-ico"><i data-lucide="clipboard-list" aria-hidden="true"></i></span>
+        <div class="aud-kpi-body"><div class="v">${n}</div><div class="l">Auditorias registradas</div></div>
+      </div>
+      <div class="aud-kpi">
+        <span class="aud-kpi-ico" style="background:${pctBg};color:${pctColor}"><i data-lucide="${pctIco}" aria-hidden="true"></i></span>
+        <div class="aud-kpi-body"><div class="v" style="color:${pctColor}">${pctMedio}<small>% NC</small></div><div class="l">Não conformidade média</div></div>
+      </div>
+      <div class="aud-kpi">
+        <span class="aud-kpi-ico"><i data-lucide="list-checks" aria-hidden="true"></i></span>
+        <div class="aud-kpi-body"><div class="v v-text">${n ? escapeHtml(topItem) : '—'}</div><div class="l">Item mais não conforme${topN ? ` · ${topN}×` : ''}</div></div>
+      </div>
+    </div>`;
+  if (typeof refreshIcons === 'function') refreshIcons();
+}
+
+function audBuildFilterbar() {
+  const mount = document.getElementById('auditoria-cards-mount');
+  if (!mount || mount.dataset.built === '1') { audRefreshClinicaFilter(); return; }
+  mount.innerHTML = `
+    <div class="aud-filterbar">
+      <div class="aud-field"><label>Buscar (nome/atend.)</label><input type="text" id="audf-q" class="ins-cell" oninput="audAplicarEFiltrar()" autocomplete="off"></div>
+      <div class="aud-field"><label>Clínica</label><select id="audf-clinica" class="ins-cell" onchange="audAplicarEFiltrar()"><option value="">Todas</option></select></div>
+      <div class="aud-field"><label>Médico</label><input type="text" id="audf-medico" class="ins-cell" oninput="audAplicarEFiltrar()" autocomplete="off"></div>
+      <div class="aud-field"><label>Item não conforme</label><select id="audf-item" class="ins-cell" onchange="audAplicarEFiltrar()"><option value="">Qualquer</option>${AUD_ITENS.map(it => `<option value="${it.key}">${it.label}</option>`).join('')}</select></div>
+      <div class="aud-field"><label>% NC</label><select id="audf-faixa" class="ins-cell" onchange="audAplicarEFiltrar()"><option value="">Todas</option><option value="0">0% (conforme)</option><option value="1-20">1–20%</option><option value="21-100">&gt; 20%</option></select></div>
+      <div class="aud-field"><label>De</label><input type="date" id="audf-de" class="ins-cell" onchange="audAplicarEFiltrar()"></div>
+      <div class="aud-field"><label>Até</label><input type="date" id="audf-ate" class="ins-cell" onchange="audAplicarEFiltrar()"></div>
+      <div class="aud-field"><label>&nbsp;</label><button class="btn btn-ghost" onclick="audLimparFiltros()">Limpar</button></div>
+    </div>
+    <div id="aud-cards-list" class="aud-cards"></div>`;
+  mount.dataset.built = '1';
+  audRefreshClinicaFilter();
+}
+
+function audRefreshClinicaFilter() {
+  const sel = document.getElementById('audf-clinica');
+  if (!sel) return;
+  const cur = sel.value;
+  const clinicas = [...new Set(AUD_DATA.map(r => r.clinica).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todas</option>' + clinicas.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  if (clinicas.includes(cur)) sel.value = cur;
+}
+
+function audLimparFiltros() {
+  ['audf-q', 'audf-medico', 'audf-de', 'audf-ate', 'audf-clinica', 'audf-item', 'audf-faixa']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  audAplicarEFiltrar();
+}
+
+function audFiltrar() {
+  const q       = (document.getElementById('audf-q')?.value || '').trim().toLowerCase();
+  const clinica = document.getElementById('audf-clinica')?.value || '';
+  const medico  = (document.getElementById('audf-medico')?.value || '').trim().toLowerCase();
+  const item    = document.getElementById('audf-item')?.value || '';
+  const faixa   = document.getElementById('audf-faixa')?.value || '';
+  const de      = document.getElementById('audf-de')?.value || '';
+  const ate     = document.getElementById('audf-ate')?.value || '';
+  return AUD_DATA.filter(r => {
+    if (q && !((r.nome_paciente || '').toLowerCase().includes(q) || String(r.atendimento || '').toLowerCase().includes(q))) return false;
+    if (clinica && r.clinica !== clinica) return false;
+    if (medico && !(r.medico_responsavel || '').toLowerCase().includes(medico)) return false;
+    if (item && r[item] !== true) return false;
+    if (faixa) {
+      const p = audPct(r);
+      if (faixa === '0' && p !== 0) return false;
+      if (faixa === '1-20' && !(p >= 1 && p <= 20)) return false;
+      if (faixa === '21-100' && !(p > 20)) return false;
+    }
+    if (de && (r.data_auditoria || '') < de) return false;
+    if (ate && (r.data_auditoria || '') > ate) return false;
+    return true;
+  });
+}
+
+function audAplicarEFiltrar() {
+  audRefreshClinicaFilter();
+  const filt = audFiltrar();
+  audRenderCards(filt);
+  audRenderCharts(filt);
+}
+
+function audRenderCards(list) {
+  const wrap = document.getElementById('aud-cards-list');
+  if (!wrap) return;
+  if (!list.length) {
+    wrap.innerHTML = AUD_DATA.length
+      ? `<div class="aud-empty"><i data-lucide="filter-x" aria-hidden="true"></i><p>Nenhuma auditoria bate com os filtros atuais.</p><button class="btn btn-ghost" onclick="audLimparFiltros()">Limpar filtros</button></div>`
+      : `<div class="aud-empty"><i data-lucide="clipboard-list" aria-hidden="true"></i><p>Nenhuma auditoria registrada ainda.</p><span>Use a aba <strong>Registrar</strong> pra lançar a primeira.</span></div>`;
+    if (typeof refreshIcons === 'function') refreshIcons();
+    return;
+  }
+  wrap.innerHTML = list.map(r => {
+    const p = audPct(r);
+    const nc = audNcKeys(r);
+    let cls = '', bg = '#22c55e', fg = '#04210f';
+    if (p > 20) { cls = 'sev-hi'; bg = '#ef4444'; fg = '#ffffff'; }
+    else if (p > 0) { cls = 'sev-mid'; bg = '#f59e0b'; fg = '#3a2602'; }
+    const chips = nc.map(k => `<span class="aud-chip">${escapeHtml(AUD_LABEL[k])}</span>`).join('');
+    return `<div class="aud-card-item ${cls}">
+      <div class="top">
+        <div>
+          <div class="nome">${escapeHtml(r.nome_paciente || '—')}</div>
+          <div class="meta">Atend. ${escapeHtml(String(r.atendimento || '—'))} · ${escapeHtml(r.clinica || '—')} · ${escapeHtml(r.medico_responsavel || '—')}</div>
+          <div class="meta">${escapeHtml(r.data_auditoria || '')}${r.auditor ? ' · ' + escapeHtml(r.auditor) : ''}</div>
+        </div>
+        <span class="aud-card-pct" style="background:${bg};color:${fg}">${p}% NC</span>
+      </div>
+      ${nc.length ? `<div class="aud-chips">${chips}</div>` : '<div class="meta" style="margin-top:8px;color:#22c55e">Totalmente conforme</div>'}
+      <div class="aud-card-actions">
+        <button class="aud-icon-btn" title="Editar" aria-label="Editar auditoria" onclick="audEditar(${r.id})"><i data-lucide="pencil" aria-hidden="true"></i></button>
+        <button class="aud-icon-btn danger" title="Excluir" aria-label="Excluir auditoria" onclick="audExcluir(${r.id})"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+  if (typeof refreshIcons === 'function') refreshIcons();
+}
+
+function audRenderCharts(list) {
+  const mount = document.getElementById('auditoria-charts-mount');
+  if (!mount) return;
+  if (typeof Chart === 'undefined') { mount.innerHTML = '<div class="aud-empty">Gráficos indisponíveis (Chart.js não carregou).</div>'; return; }
+  if (mount.dataset.built !== '1') {
+    mount.innerHTML = `
+      <div class="aud-charts">
+        <div class="aud-chart-card"><h3><i data-lucide="bar-chart-3" aria-hidden="true"></i> Pareto · motivos de não conformidade</h3><div class="aud-chart-wrap"><canvas id="aud-chart-motivos"></canvas></div></div>
+        <div class="aud-chart-card"><h3><i data-lucide="bar-chart-3" aria-hidden="true"></i> Pareto · especialidades com mais NC</h3><div class="aud-chart-wrap"><canvas id="aud-chart-esp"></canvas></div></div>
+        <div class="aud-chart-card" style="grid-column:1/-1"><h3><i data-lucide="trending-up" aria-hidden="true"></i> % médio de não conformidade por mês</h3><div class="aud-chart-wrap"><canvas id="aud-chart-mensal"></canvas></div></div>
+      </div>`;
+    mount.dataset.built = '1';
+    if (typeof refreshIcons === 'function') refreshIcons();
+  }
+  const motivos = AUD_ITENS.map(it => ({ label: it.label, n: list.filter(r => r[it.key] === true).length }))
+    .filter(x => x.n > 0).sort((a, b) => b.n - a.n);
+  audPareto('aud-chart-motivos', 'motivos', motivos.map(c => c.label), motivos.map(c => c.n));
+  const byEsp = {};
+  list.forEach(r => { if (r.clinica) byEsp[r.clinica] = (byEsp[r.clinica] || 0) + (r.total_nc || 0); });
+  const esp = Object.entries(byEsp).map(([k, v]) => ({ label: k, n: v })).filter(x => x.n > 0).sort((a, b) => b.n - a.n);
+  audPareto('aud-chart-esp', 'esp', esp.map(e => e.label), esp.map(e => e.n));
+  const porMes = {};
+  list.forEach(r => { const m = (r.data_auditoria || '').slice(0, 7); if (m) (porMes[m] = porMes[m] || []).push(audPct(r)); });
+  const meses = Object.keys(porMes).sort();
+  const medias = meses.map(m => Math.round(porMes[m].reduce((s, v) => s + v, 0) / porMes[m].length));
+  audLineMensal(meses, medias);
+}
+
+function audLineMensal(labels, data) {
+  const cv = document.getElementById('aud-chart-mensal');
+  if (!cv) return;
+  if (audCharts.mensal) { audCharts.mensal.destroy(); audCharts.mensal = null; }
+  if (!labels.length) return;
+  const teal = audCss('--teal', '#0D9488');
+  const tick = audCss('--textMuted', '#B8C4D6');
+  const grid = 'rgba(184,196,214,0.10)';
+  audCharts.mensal = new Chart(cv, {
+    type: 'line',
+    data: { labels, datasets: [{ label: '% NC médio', data, borderColor: teal, backgroundColor: 'rgba(13,148,136,0.14)', borderWidth: 2, fill: true, tension: 0.35, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: teal, pointBorderColor: teal }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: audChartAnim(),
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        y: { beginAtZero: true, max: 100, border: { display: false }, ticks: { color: tick, font: { size: 11 }, callback: v => v + '%' }, grid: { color: grid } },
+        x: { border: { display: false }, grid: { display: false }, ticks: { color: tick, font: { size: 10 } } },
+      },
+      plugins: {
+        legend: { labels: { color: tick, boxWidth: 12, boxHeight: 12, usePointStyle: true, font: { size: 11 } } },
+        tooltip: Object.assign({ callbacks: { label: c => ' ' + c.parsed.y + '% NC médio' } }, audTooltipStyle()),
+      },
+    },
+    plugins: [audLineLabels],
+  });
+}
+
+function audPareto(canvasId, key, labels, data) {
+  const cv = document.getElementById(canvasId);
+  if (!cv) return;
+  if (audCharts[key]) { audCharts[key].destroy(); audCharts[key] = null; }
+  if (!labels.length) return;
+  const total = data.reduce((s, v) => s + v, 0) || 1;
+  let acc = 0;
+  const cum = data.map(v => { acc += v; return Math.round(acc / total * 100); });
+  const teal = audCss('--teal', '#0D9488');
+  const amber = audCss('--amber', '#F59E0B');
+  const tick = audCss('--textMuted', '#B8C4D6');
+  const grid = 'rgba(184,196,214,0.10)';
+  audCharts[key] = new Chart(cv, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Não conformidades', data, backgroundColor: teal, hoverBackgroundColor: teal, borderRadius: 6, borderSkipped: false, maxBarThickness: 46, yAxisID: 'y', order: 2 },
+      { label: '% acumulada', type: 'line', data: cum, borderColor: amber, backgroundColor: 'rgba(245,158,11,0.12)', borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: amber, pointBorderColor: amber, fill: true, yAxisID: 'y1', order: 1, tension: 0.35 },
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: audChartAnim(),
+      interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 18 } },
+      scales: {
+        y:  { beginAtZero: true, border: { display: false }, ticks: { precision: 0, color: tick, font: { size: 11 } }, grid: { color: grid } },
+        y1: { type: 'linear', position: 'right', beginAtZero: true, max: 100, border: { display: false }, grid: { drawOnChartArea: false }, ticks: { color: tick, font: { size: 11 }, callback: v => v + '%' } },
+        x:  { border: { display: false }, grid: { display: false }, ticks: { color: tick, font: { size: 10 }, maxRotation: 42, autoSkip: false,
+          callback(v) { const l = this.getLabelForValue(v); return l.length > 16 ? l.slice(0, 15) + '…' : l; } } },
+      },
+      plugins: {
+        legend: { labels: { color: tick, boxWidth: 12, boxHeight: 12, usePointStyle: true, font: { size: 11 } } },
+        tooltip: Object.assign({ callbacks: { title: items => labels[items[0].dataIndex] } }, audTooltipStyle()),
+      },
+    },
+    plugins: [audBarLabels, audPareto80],
+  });
+}
+
+function audFiltrosDescricao() {
+  const parts = [];
+  const q = (document.getElementById('audf-q')?.value || '').trim(); if (q) parts.push(`busca "${q}"`);
+  const c = document.getElementById('audf-clinica')?.value; if (c) parts.push(`clínica ${c}`);
+  const m = (document.getElementById('audf-medico')?.value || '').trim(); if (m) parts.push(`médico "${m}"`);
+  const it = document.getElementById('audf-item')?.value; if (it) parts.push(`item ${AUD_LABEL[it] || it}`);
+  const fx = document.getElementById('audf-faixa')?.value; if (fx) parts.push(`%NC ${fx === '0' ? '0%' : fx === '1-20' ? '1–20%' : '>20%'}`);
+  const de = document.getElementById('audf-de')?.value; const ate = document.getElementById('audf-ate')?.value;
+  if (de || ate) parts.push(`período ${de || '…'}–${ate || '…'}`);
+  return parts.join(' · ');
+}
+
+async function audExportarPDF() {
+  const btn = document.getElementById('aud-btn-pdf');
+  const btnHtml = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" aria-hidden="true"></i> Gerando…'; if (window.lucide) lucide.createIcons(); }
+  try {
+    await carregarJsPDF();
+    _audExportarPDFSync();
+  } catch (e) {
+    console.error('[pdf] carregarJsPDF falhou:', e);
+    showToast('Não foi possível carregar a biblioteca de PDF. Costuma ser bloqueio de antivírus, extensão ou rede corporativa. Tente liberar este site no antivírus/firewall ou usar outro navegador.', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; if (btnHtml !== null) btn.innerHTML = btnHtml; if (window.lucide) lucide.createIcons(); }
+  }
+}
+
+function _audExportarPDFSync() {
+  const ns = window.jspdf;
+  if (!ns || !ns.jsPDF) { showToast('Biblioteca de PDF não carregou — verifique a conexão e tente de novo', 'error'); return; }
+  const list = audFiltrar();
+  if (!list.length) { showToast('Sem auditorias para exportar (ajuste os filtros)', 'warning'); return; }
+  const { jsPDF } = ns;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const Hpg = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  let y = 16;
+
+  doc.setFontSize(14); doc.setTextColor(15, 30, 45);
+  doc.text('Relatório de Auditoria de Evoluções', margin, y); y += 6;
+  doc.setFontSize(9); doc.setTextColor(90);
+  const nomeHosp = (typeof HOSPITAL_NOME_LONGO !== 'undefined' && HOSPITAL_NOME_LONGO) ? HOSPITAL_NOME_LONGO : HOSPITAL_ID;
+  doc.text(nomeHosp, margin, y); y += 4.5;
+  const datas = list.map(r => r.data_auditoria).filter(Boolean).sort();
+  const periodo = datas.length ? `${datas[0]} a ${datas[datas.length - 1]}` : '—';
+  const hoje = new Date().toISOString().slice(0, 10);
+  doc.text(`Período: ${periodo}  ·  Gerado em: ${hoje}  ·  ${list.length} auditoria(s)`, margin, y); y += 4.5;
+  const fd = audFiltrosDescricao();
+  if (fd) { doc.text(`Filtros: ${fd}`, margin, y); y += 4.5; }
+  y += 2;
+
+  const pctMedio = Math.round(list.reduce((s, r) => s + audPct(r), 0) / list.length);
+  const cont = {}; AUD_ITENS.forEach(it => { cont[it.key] = 0; });
+  list.forEach(r => AUD_ITENS.forEach(it => { if (r[it.key] === true) cont[it.key]++; }));
+  let topItem = '—', topN = 0; Object.entries(cont).forEach(([k, v]) => { if (v > topN) { topN = v; topItem = AUD_LABEL[k]; } });
+  doc.setFontSize(10); doc.setTextColor(15, 30, 45);
+  doc.text(`NC média: ${pctMedio}%   ·   Item mais não conforme: ${topItem}${topN ? ` (${topN}×)` : ''}`, margin, y); y += 8;
+
+  const charts = [['Motivos de não conformidade', 'motivos'], ['Especialidades com mais NC', 'esp'], ['% NC médio por mês', 'mensal']];
+  const imgW = W - margin * 2;
+  const imgH = imgW * 0.40;
+  for (const [titulo, key] of charts) {
+    const ch = audCharts[key];
+    if (!ch) continue;
+    let img;
+    try { img = ch.toBase64Image('image/png', 1); } catch (e) { console.warn('[pdf] chart', key, e); continue; }
+    if (y + imgH + 8 > Hpg - 12) { doc.addPage(); y = 16; }
+    doc.setFontSize(9); doc.setTextColor(90); doc.text(titulo, margin, y); y += 3;
+    doc.setFillColor(15, 23, 42); doc.rect(margin, y, imgW, imgH, 'F');
+    doc.addImage(img, 'PNG', margin, y, imgW, imgH); y += imgH + 7;
+  }
+
+  const body = list.map(r => [
+    r.nome_paciente || '—', String(r.atendimento || '—'), r.clinica || '—', r.medico_responsavel || '—',
+    r.data_auditoria || '—', audPct(r) + '%', audNcKeys(r).map(k => AUD_LABEL[k]).join(', ') || '—',
+  ]);
+  doc.autoTable({
+    head: [['Paciente', 'Atend.', 'Clínica', 'Médico', 'Data', '%NC', 'Itens não conformes']],
+    body,
+    startY: y + 2,
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak' },
+    headStyles: { fillColor: [20, 184, 166] },
+    columnStyles: { 6: { cellWidth: 52 } },
+  });
+
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i); doc.setFontSize(7); doc.setTextColor(150);
+    doc.text('Confidencial — uso interno · LGPD', margin, Hpg - 8);
+    doc.text(`${i}/${pages}`, W - margin, Hpg - 8, { align: 'right' });
+  }
+  doc.save(`auditoria-evolucoes-${HOSPITAL_ID}-${hoje}.pdf`);
+  showToast('PDF gerado', 'success');
+}
+</script>
 
 </body>
 </html>
