@@ -6674,6 +6674,10 @@ body.is-edit-focus [data-edit-focus] {
     <button class="nav-tab" id="tab-retaguarda-ps" onclick="switchView('retaguarda-ps')">
       <i aria-hidden="true" data-lucide="door-open"></i> Retaguarda PS <span class="nav-tab-badge" data-badge="retaguarda-ps">—</span>
     </button>
+    <!-- [Paridade HMSA 2026-06-28] Auditoria promovida a aba principal (era item do dropdown Estratégico) -->
+    <button class="nav-tab" id="tab-auditoria" onclick="switchView('auditoria')">
+      <i aria-hidden="true" data-lucide="clipboard-check"></i> Auditoria
+    </button>
     <!-- [Fase 64.1 A1] Dropdown Estratégico: Indicadores · Projetos Kaizen -->
     <div class="nav-recursos-wrap">
       <button class="nav-tab nav-tab-recursos" id="tab-estrategico" aria-haspopup="true" aria-expanded="false" aria-controls="nav-estrategico-menu" onclick="toggleEstrategicoMenu(event)">
@@ -6694,13 +6698,6 @@ body.is-edit-focus [data-edit-focus] {
           <span class="recursos-item-label">
             <span>Projetos Kaizen</span>
             <span class="recursos-item-desc">Iniciativas e plano de ação</span>
-          </span>
-        </button>
-        <button class="recursos-item" id="estrategico-auditoria" role="menuitem" onclick="switchView('auditoria'); closeEstrategicoMenu();">
-          <i aria-hidden="true" data-lucide="clipboard-check"></i>
-          <span class="recursos-item-label">
-            <span>Auditoria das evoluções</span>
-            <span class="recursos-item-desc">Qualidade dos prontuários</span>
           </span>
         </button>
       </div>
@@ -17603,7 +17600,7 @@ function switchView(view, subView, subSubView) {
   if (tabEstrategico) tabEstrategico.classList.toggle('has-active-child', estrategicoViews.includes(view));
   document.getElementById('estrategico-indicadores')?.classList.toggle('is-active', view === 'indicadores');
   document.getElementById('estrategico-kaizens')?.classList.toggle('is-active', view === 'kaizens');
-  document.getElementById('estrategico-auditoria')?.classList.toggle('is-active', view === 'auditoria');
+  document.getElementById('tab-auditoria')?.classList.toggle('active', view === 'auditoria');
   // [Fase A HMAGR] Sub-tabs Auditoria
   const subTabsAud = document.getElementById('sub-tabs-auditoria');
   if (subTabsAud) subTabsAud.style.display = (view === 'auditoria') ? 'flex' : 'none';
