@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0B1A33">
 <title>Sistema Lean + IA · HMAGR</title>
+<!-- [2026-06-29] Guard de acesso: PRIMEIRO script. Esconde a pagina ate /api/auth/verify confirmar
+     sessao+aceite; senao redireciona pra /login.html. Protege a INTERFACE, nao o dado (ver SPEC-AUTH-HMAGR). -->
+<script src="/auth-guard.js"></script>
 <!-- [Fix 2026-05-11] Cache-busting padrão: detecta nova versão via polling e mostra banner pra refresh.
      Resolve caso aba aberta antes de deploy (JS antigo em runtime). Combina com Cache-Control no-store em vercel.json. -->
 <script>
