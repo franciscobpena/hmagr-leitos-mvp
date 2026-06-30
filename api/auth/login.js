@@ -10,8 +10,9 @@ const { signToken, SESSAO_TTL_S } = require('../../lib/token');
 // proposital pra nao liberar acesso amplo antes do dominio ser definido.
 const DOMINIO_AUTORIZADO = (process.env.AUTH_EMAIL_DOMAIN || '').trim().toLowerCase();
 
-// Convidados externos (fora do dominio), liberados caso a caso. Vazio no piloto HMAGR.
-const EMAILS_CONVIDADOS = [];
+// Convidados externos (fora do dominio), liberados caso a caso.
+// Login padrao do piloto HMAGR (decisao do Maestro 30/jun): conta de gerencia assistencial.
+const EMAILS_CONVIDADOS = ['gerenciaassistencial@gmail.com'];
 
 // Usuario master (Francisco): bypassa dominio + senha compartilhada. Senha de MASTER_PASSWORD
 // (env), fallback fixo 'lean' por decisao do dono pra o piloto funcionar sem config.
