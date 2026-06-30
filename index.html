@@ -9296,7 +9296,7 @@ function renderHeatmap(pts) {
       const idEpAttr = (p.idEpisodio || '').replace(/'/g, '&#39;');
       return `<button type="button" class="bed-card ${cc}${isLP?' lp-pulse':''}${hasOv?' bed-card-ov':''}"
         onclick="openModal(${idx})"
-        title="${p.nomePaciente ? p.nomePaciente + ' · ' : ''}Leito ${p.numLeito} · ${p.especialidade} · ${d}d${sp?' · SP':''}${ann?' · Plano de ação':''}${hasOv?' · OV (corrigido)':''}"
+        title="${p.nomePaciente ? escapeHtml(p.nomePaciente) + ' · ' : ''}Leito ${p.numLeito} · ${p.especialidade} · ${d}d${sp?' · SP':''}${ann?' · Plano de ação':''}${hasOv?' · OV (corrigido)':''}"
         aria-label="${_aria}">
         <div class="bed-badges">
           ${sp  ? '<span class="badge badge-sp">SP</span>'  : ''}
