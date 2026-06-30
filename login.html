@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Acesso | HMAGR Gestao de Leitos</title>
+<style>
+  :root {
+    --navy: #0B1A33;          /* design system do painel HMAGR */
+    --navy-hover: #16294d;
+    --teal: #0D9488;
+    --tinta: #1f2937;
+    --tinta-suave: #4b5563;
+    --linha: #e5e7eb;
+    --fundo: #f3f4f6;
+    --card: #ffffff;
+    --erro: #b91c1c;
+    --erro-bg: #fef2f2;
+    --alerta: #b45309;
+    --raio: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--tinta);
+    background: var(--fundo);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    line-height: 1.5;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--card);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    padding: 28px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .marca { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--tinta-suave); margin: 0 0 4px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { font-size: 14px; color: var(--tinta-suave); margin: 0 0 22px; }
+
+  label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 6px; }
+  .campo { margin-bottom: 16px; }
+  input[type=email], input[type=password] {
+    width: 100%;
+    padding: 11px 12px;
+    font-size: 15px;
+    border: 1px solid var(--linha);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--tinta);
+  }
+  input:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #fff;
+    background: var(--navy);
+  }
+  .btn:hover { background: var(--navy-hover); }
+  .btn:disabled { opacity: .6; cursor: progress; }
+
+  .erro {
+    display: none;
+    background: var(--erro-bg);
+    color: var(--erro);
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .erro.on { display: block; }
+
+  .solicitar { display: none; margin-top: 16px; text-align: center; font-size: 13px; }
+  .solicitar.on { display: block; }
+  .solicitar a { color: var(--teal); font-weight: 600; }
+
+  /* Modal de confidencialidade */
+  .overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(17,24,39,.55);
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 50;
+  }
+  .overlay.on { display: grid; place-items: center; }
+  .modal {
+    width: 100%;
+    max-width: 460px;
+    background: #fff;
+    border-radius: var(--raio);
+    padding: 26px 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  }
+  .modal h2 {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 17px; color: var(--alerta);
+    margin: 0 0 16px;
+  }
+  .modal p { font-size: 13.5px; color: var(--tinta); margin: 0 0 14px; }
+  .modal strong { color: var(--tinta); }
+  .modal ul { font-size: 13.5px; color: var(--tinta-suave); margin: 0 0 14px; padding-left: 20px; }
+  .modal li { margin-bottom: 6px; }
+  .modal .legal { color: var(--erro); font-weight: 600; }
+  .modal .btn { margin-top: 8px; }
+</style>
+</head>
+<body>
+
+  <main class="card" id="loginCard">
+    <p class="marca">HMAGR &middot; Gestao de Leitos</p>
+    <h1>Acesso restrito</h1>
+    <p class="sub">Hospital Municipal de Caucaia Abelardo Gadelha da Rocha. Entre com seu e-mail institucional e a senha de acesso.</p>
+
+    <div class="erro" id="erroBox" role="alert"></div>
+
+    <div class="campo">
+      <label for="email">E-mail institucional</label>
+      <input type="email" id="email" autocomplete="username"
+             placeholder="seu e-mail institucional" inputmode="email" />
+    </div>
+
+    <div class="campo">
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" autocomplete="current-password" placeholder="Senha de acesso" />
+    </div>
+
+    <button class="btn" id="btnEntrar">Entrar</button>
+
+    <p class="solicitar" id="solicitarBox">
+      Sem acesso? <a id="linkSolicitar" href="#">Solicitar liberacao por e-mail</a>
+    </p>
+  </main>
+
+  <!-- Modal de confidencialidade: aparece apos login bem-sucedido -->
+  <div class="overlay" id="overlayTermo" role="dialog" aria-modal="true" aria-labelledby="tituloTermo">
+    <div class="modal">
+      <h2 id="tituloTermo">&#9888; AVISO DE CONFIDENCIALIDADE</h2>
+      <p><strong>ATENCAO:</strong> Este sistema contem informacoes medicas confidenciais protegidas por sigilo profissional.</p>
+      <p><strong>E ESTRITAMENTE PROIBIDO:</strong></p>
+      <ul>
+        <li>Compartilhar dados por qualquer meio (verbal, digital, fotografico)</li>
+        <li>Fazer screenshots, fotos ou gravacoes da tela</li>
+        <li>Divulgar informacoes a pessoas nao autorizadas</li>
+        <li>Usar dados para fins nao relacionados ao atendimento</li>
+      </ul>
+      <p><strong>RESPONSABILIDADE LEGAL:</strong> O uso inadequado destes dados configura violacao a LGPD (Lei 13.709/2018) e ao Codigo de Etica Medica, sujeitando o infrator a sancoes administrativas, civis e penais.</p>
+      <p class="legal">Ao prosseguir, voce assume total responsabilidade pelo uso adequado e confidencial das informacoes.</p>
+      <button class="btn" id="btnCiente">CIENTE E DE ACORDO</button>
+    </div>
+  </div>
+
+<script>
+  // Destino apos login + aceite.
+  var DESTINO_POS_LOGIN = '/';
+
+  // E-mail que recebe as solicitacoes de acesso.
+  var EMAIL_SOLICITACAO = 'bahiapenafrancisco@gmail.com';
+
+  var emailEl = document.getElementById('email');
+  var senhaEl = document.getElementById('senha');
+  var btnEntrar = document.getElementById('btnEntrar');
+  var erroBox = document.getElementById('erroBox');
+  var solicitarBox = document.getElementById('solicitarBox');
+  var linkSolicitar = document.getElementById('linkSolicitar');
+  var overlayTermo = document.getElementById('overlayTermo');
+  var btnCiente = document.getElementById('btnCiente');
+
+  function mostrarErro(msg) {
+    erroBox.textContent = msg;
+    erroBox.classList.add('on');
+    solicitarBox.classList.add('on'); // libera o caminho de solicitacao
+  }
+  function limparErro() {
+    erroBox.classList.remove('on');
+    erroBox.textContent = '';
+  }
+
+  function montarSolicitacao() {
+    var email = (emailEl.value || '').trim();
+    var assunto = 'Solicitacao de acesso - Portal HMAGR Gestao de Leitos';
+    var corpo =
+      'Ola,\n\nGostaria de solicitar acesso ao Portal HMAGR Gestao de Leitos.\n\n' +
+      'Nome:\nFuncao / Setor:\nHospital / Unidade: HMAGR\n' +
+      'E-mail informado: ' + (email || '(nao informado)') + '\n\n' +
+      'Obrigado.';
+    // Gmail web compose: abre uma mensagem ja enderecada, sem depender de cliente de e-mail no SO.
+    return 'https://mail.google.com/mail/?view=cm&fs=1' +
+           '&to=' + encodeURIComponent(EMAIL_SOLICITACAO) +
+           '&su=' + encodeURIComponent(assunto) +
+           '&body=' + encodeURIComponent(corpo);
+  }
+
+  linkSolicitar.addEventListener('click', function (e) {
+    e.preventDefault();
+    window.open(montarSolicitacao(), '_blank', 'noopener');
+  });
+
+  async function entrar() {
+    limparErro();
+    var email = (emailEl.value || '').trim();
+    var senha = senhaEl.value || '';
+
+    if (!email || !senha) {
+      mostrarErro('Preencha e-mail e senha.');
+      return;
+    }
+
+    btnEntrar.disabled = true;
+    btnEntrar.textContent = 'Entrando...';
+
+    try {
+      var resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email: email, password: senha })
+      });
+
+      if (resp.ok) {
+        // Login validado no servidor. Exige ciencia do termo antes de liberar.
+        overlayTermo.classList.add('on');
+        btnCiente.focus();
+      } else {
+        var data = {};
+        try { data = await resp.json(); } catch (e) {}
+        mostrarErro(data.error || 'Nao foi possivel entrar. Verifique os dados ou solicite acesso.');
+      }
+    } catch (e) {
+      mostrarErro('Falha de conexao. Tente novamente ou solicite acesso.');
+    } finally {
+      btnEntrar.disabled = false;
+      btnEntrar.textContent = 'Entrar';
+    }
+  }
+
+  btnEntrar.addEventListener('click', entrar);
+  senhaEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') entrar(); });
+  emailEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') senhaEl.focus(); });
+
+  async function aceitarTermo() {
+    btnCiente.disabled = true;
+    btnCiente.textContent = 'Registrando...';
+    try {
+      var resp = await fetch('/api/auth/accept', { method: 'POST', credentials: 'same-origin' });
+      if (resp.ok) {
+        window.location.replace(DESTINO_POS_LOGIN);
+      } else {
+        btnCiente.disabled = false;
+        btnCiente.textContent = 'CIENTE E DE ACORDO';
+        alert('Nao foi possivel registrar o aceite. Tente novamente.');
+      }
+    } catch (e) {
+      btnCiente.disabled = false;
+      btnCiente.textContent = 'CIENTE E DE ACORDO';
+      alert('Falha de conexao ao registrar o aceite.');
+    }
+  }
+
+  btnCiente.addEventListener('click', aceitarTermo);
+</script>
+</body>
+</html>
