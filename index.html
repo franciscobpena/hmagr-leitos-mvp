@@ -20707,7 +20707,7 @@ function intRenderLista() {
       <tr class="${isAtivo ? 'hist-row-ativo' : ''}" data-id="${i.id}">
         <td class="hist-cell-editable int-col-leito" onclick="intEditarCelula('${i.id}','leito',this)" title="Leito ${i.leito || '—'}">${i.leito || '—'}</td>
         <td><span class="hist-status-badge ${stClass}">${stLabel}</span></td>
-        <td class="int-col-paciente" title="Nome abreviado por LGPD">${abreviarNomePaciente(i.nome_paciente) || '—'}</td>
+        <td class="int-col-paciente">${abreviarNomePaciente(i.nome_paciente) || '—'}</td>
         <td>${i.atendimento || '—'}</td>
         <td title="Setor: ${(i.setor || '—').replace(/"/g,'&quot;')}">${i.setor || '—'}</td>
         <td class="hist-cell-editable" title="${(i.especialidade || '').replace(/"/g,'&quot;')}" onclick="intEditarCelula('${i.id}','especialidade',this,'select')">${i.especialidade || '—'}</td>
@@ -22401,19 +22401,16 @@ function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/** [LGPD 2026-05-11] Abrevia nome de paciente em iniciais com ponto. Filtra preposições (de, da, do, das, dos, e).
- *  "Francisco Bahia Pena" → "F.B.P." · "Maria das Dores Silva" → "M.D.S." */
-const _LGPD_STOPWORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+// [HMSA parity 30/jun] Nome completo no display. O gate de login agora protege o acesso,
+// entao a abreviacao LGPD foi neutralizada (mesma decisao do HMSA). Mantem a funcao e o nome
+// pra nao tocar nos ~30 call sites; agora retorna o nome completo trimado. DB persiste completo.
 function abreviarNomePaciente(nome) {
-  if (!nome) return '';
-  const partes = String(nome).trim().split(/\s+/).filter(p => p && !_LGPD_STOPWORDS.has(p.toLowerCase()));
-  if (partes.length === 0) return '';
-  return partes.map(p => p.charAt(0).toUpperCase() + '.').join('');
+  return String(nome || '').trim();
 }
-/** Retorna span HTML com nome abreviado e tooltip LGPD. Usar em renders de tabela/card. */
+/** Retorna span HTML com o nome completo, escapado. Usar em renders de tabela/card. */
 function nomePacienteHtml(nome) {
-  const abrev = abreviarNomePaciente(nome);
-  return `<span title="Nome abreviado por LGPD">${abrev || '—'}</span>`;
+  const n = String(nome || '').trim();
+  return `<span>${n ? escapeHtml(n) : '—'}</span>`;
 }
 
 /** Formata delta percentual com sinal explícito. */
