@@ -8374,6 +8374,11 @@ body.is-edit-focus [data-edit-focus] {
 <!-- ═══════════════════════════════════════════════════════════
      JAVASCRIPT
 ═══════════════════════════════════════════════════════════ -->
+<!-- [Fase 2 HMAGR — reconciliação foto-OCR] lib/reconcile.js é módulo dual Node/browser
+     (window.Reconcile). Importado via <script src> em vez de duplicar a lógica inline
+     (nota do T1, docs/tasks-fase2-reconciliacao-ocr.md). Precisa carregar ANTES do script
+     principal abaixo, que usa window.Reconcile em kfExecutarGravacao/kfConfirmarGiro. -->
+<script src="lib/reconcile.js"></script>
 <script>
 'use strict';
 
@@ -8392,6 +8397,17 @@ const HOSPITAL_NOME_CURTO = 'HMAGR';
 const HOSPITAL_NOME_LONGO = 'Hospital Municipal de Caucaia Abelardo Gadelha da Rocha';
 const HOSPITAL_LOCAL = 'Caucaia/CE';
 const HOSPITAL_URL_PROD = 'https://hmagr-leitos-mvp.vercel.app';
+
+/* [Fase 2 HMAGR — reconciliação foto-OCR, T14, CA-12.3] Feature flag do MODO REAL de
+ * reconcile(). Default `false` = MODO SOMBRA: kfExecutarGravacao calcula insert/merge/
+ * bloqueia/revisao via Reconcile.reconcile() e LOGA (console.info + kanban_reconcile_pendencias
+ * pra bloqueia/revisao), mas NUNCA escreve/altera internacoes_hmsa (CA-12.1). Nenhum caminho de
+ * código nesta entrega muda este valor em runtime — ligar é decisão futura do Maestro após
+ * período de observação do shadow-mode (spec §3 "Fora de escopo"). NÃO confundir com a baixa/giro
+ * manual disparada por um humano na fila de pendências (T11/kfConfirmarGiro): aquele fluxo já é
+ * um ato humano explícito (motivo + confirmação), não uma auto-aplicação de reconcile(), e por
+ * isso não é gateado por esta flag — só a aplicação AUTOMÁTICA de insert/merge é. */
+const KF_RECONCILE_MODO_REAL = false;
 
 const SB_URL  = 'https://smzejxtnykpjmxvxfzet.supabase.co';
 const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtemVqeHRueWtwam14dnhmemV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyOTA5ODQsImV4cCI6MjA5MTg2Njk4NH0.3WhTXc5j7YmsKNhxzrTIyAoGjMh36gnIIY0mBge-fKE';
@@ -16408,6 +16424,17 @@ async function _intHandlerDarAlta(internacaoHmsaId) {
         })
       });
       if (!r.ok) throw new Error('HTTP ' + r.status);
+      // [Fase 2 — reconciliação OCR, CA-11.2] baixa limpa o lock do leito. PATCH separado
+      // (não no body acima) e best-effort: `campos_travados` só existe depois da migration
+      // docs/migrations/2026-07-01-reconciliacao-ocr-hmagr.sql — referenciar essa coluna no
+      // PATCH principal quebraria "Dar alta" (fluxo já em produção) enquanto a migration não
+      // for aplicada. Silenciar erro aqui é seguro: pior caso é o lock sobreviver 1 baixa a
+      // mais até a migration existir, nunca perda de dado.
+      fetch(`${SB_URL}/rest/v1/internacoes_hmsa?id=eq.${encodeURIComponent(internacaoHmsaId)}`, {
+        method: 'PATCH',
+        headers: { ...SB_H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ campos_travados: null })
+      }).catch(() => {});
       // [Onda 6 T11] Marcar leito vagado pra animação piscando 30s
       if (p && p.leito && typeof _onda6MarcarLeitoVagado === 'function') {
         _onda6MarcarLeitoVagado(p.leito);
@@ -27293,7 +27320,8 @@ let kfState = {
   existingSnapshotId: null, // id do snapshot ativo para dedup semântico
   imageHash: null,
   imageDhash: null,
-  pendingSemanticChoice: null // fn a chamar após escolha no modal
+  pendingSemanticChoice: null, // fn a chamar após escolha no modal
+  leitosVazios: [] // [Fase 2] leitos_vazios do extract.js (CA-08.5), consumido por reconcile()
 };
 
 const KF_SETOR_SIGLAS = {
@@ -27305,7 +27333,7 @@ const KF_CAMPOS_ESSENCIAIS = ['leito', 'data_admissao'];
 
 /** Render inicial — reseta a view ao navegar para #/kanban/foto */
 function renderKanbanFoto() {
-  kfState = { pacientes: [], setorSigla: null, setorNome: null, dataKanban: null, confiancaSetor: 1, existingSnapshotId: null, imageHash: null, imageDhash: null, pendingSemanticChoice: null };
+  kfState = { pacientes: [], setorSigla: null, setorNome: null, dataKanban: null, confiancaSetor: 1, existingSnapshotId: null, imageHash: null, imageDhash: null, pendingSemanticChoice: null, leitosVazios: [] };
   kfShowSection('upload');
   const inp = document.getElementById('kf-upload-input');
   if (inp) inp.value = '';
@@ -27503,6 +27531,10 @@ async function kfSubmitToAPI(imageB64, hash, dhash) {
   kfState.setorNome = data.setor_nome || KF_SETOR_SIGLAS[data.setor_sigla] || data.setor_sigla;
   kfState.dataKanban = data.data_kanban;
   kfState.confiancaSetor = data.confianca_setor || 1;
+  // [Fase 2 — reconciliação foto-OCR, CA-08.5/CA-09.1] leitos_vazios: distinto de leito
+  // simplesmente ausente da lista de pacientes — sinal explícito do extract.js de que o
+  // leito foi visto vazio na foto. Consumido por Reconcile.reconcile() em kfExecutarGravacao.
+  kfState.leitosVazios = Array.isArray(data.leitos_vazios) ? data.leitos_vazios : [];
 
   // Normaliza pacientes: adiciona campos_baixa_confianca se ausente
   kfState.pacientes = (data.pacientes || []).map((p, i) => ({
@@ -27717,51 +27749,136 @@ async function kfGravar() {
   if (btn) btn.disabled = false;
 }
 
-/** Executa o upsert batch + snapshot + hashes (T2.8) */
+/**
+ * [T4, CA-08.1] Read-before-write: busca o ocupante ATIVO do leito antes de qualquer
+ * escrita. GET falho (rede/HTTP) retorna `ok:false` — quem chama NUNCA deve tratar isso
+ * como "leito vazio" (evitaria insert/merge cego sobre dado desconhecido).
+ */
+async function kfFetchLeitoAtual(leito) {
+  try {
+    const url = `${SB_URL}/rest/v1/internacoes_hmsa`
+      + `?leito=eq.${encodeURIComponent(leito)}`
+      + `&hospital=eq.${encodeURIComponent(HOSPITAL_ID)}`
+      + `&status_internacao=eq.ativa&select=*`;
+    const resp = await fetch(url, { headers: SB_H });
+    if (!resp.ok) return { ok: false, cur: null };
+    const rows = await resp.json();
+    return { ok: true, cur: rows.length ? rows[0] : null };
+  } catch (_) {
+    return { ok: false, cur: null };
+  }
+}
+
+/**
+ * [T10/T13] Grava pendência de reconciliação (branches bloqueia/revisao/sugestao_campo)
+ * em kanban_reconcile_pendencias. Best-effort/non-blocking (mesmo padrão de `logExtracao`
+ * em api/extract.js e dos vários `.catch(()=>{})` do repo) — se a tabela ainda não existir
+ * (migration docs/migrations/2026-07-01-reconciliacao-ocr-hmagr.sql pendente de aplicação),
+ * a app não quebra, só não persiste a fila. Roda INDEPENDENTE de KF_RECONCILE_MODO_REAL:
+ * a fila em si não altera internacoes_hmsa (CA-12.1), só sinaliza pra decisão humana (T11).
+ */
+async function kfLogPendencia(tipoReconcile, payloadOcr, curId, extra) {
+  const tipo = (typeof Reconcile !== 'undefined' && Reconcile.mapPendenciaTipoToDb)
+    ? Reconcile.mapPendenciaTipoToDb(tipoReconcile)
+    : tipoReconcile;
+  try {
+    await fetch(`${SB_URL}/rest/v1/kanban_reconcile_pendencias`, {
+      method: 'POST',
+      headers: { ...SB_H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        hospital_id: HOSPITAL_ID,
+        tipo,
+        payload_ocr: payloadOcr || {},
+        cur_id: curId || null,
+        ...(extra || {})
+      })
+    });
+  } catch (_) { /* best-effort — tabela pode não existir ainda */ }
+}
+
+/**
+ * [T10/T13/T14] Executa a reconciliação foto→internacoes_hmsa por paciente via
+ * Reconcile.reconcile() (T4 read-before-write + T5 idEpisodio real + T9 máquina de estados).
+ * Modo sombra é o default (KF_RECONCILE_MODO_REAL=false, T14): calcula tudo e loga
+ * (console.info + kanban_reconcile_pendencias pra bloqueia/revisao/sugestao), mas
+ * insert/merge só aplicam PATCH/POST real em internacoes_hmsa quando o modo real está
+ * ligado (CA-12.1/CA-12.3). Pendências (giro/revisão/sugestão) são gravadas sempre —
+ * não tocam internacoes_hmsa, então não violam o invariante do modo sombra.
+ */
 async function kfExecutarGravacao() {
   const btn = document.getElementById('kf-btn-gravar');
   if (btn) btn.disabled = true;
 
-  // 1. Upsert pacientes em internacoes_hmsa (G6: hospital='HMAGR')
-  const payload = kfState.pacientes.map(p => {
-    const leito = String(p.leito || '').trim();
-    return {
-      id: `HMAGR_int_${leito}`,
-      hospital: 'HMAGR',
-      atendimento: leito,
-      nome_paciente: p.nome || null,
-      setor: kfState.setorSigla,
-      leito: leito,
-      cid_principal: p.diagnostico || null,
-      idade: typeof p.idade === 'number' ? p.idade : null,
-      data_internacao: p.data_admissao || null,
-      previsao_kanban: p.data_provavel_alta || null,
-      pendencia: p.pendencias || null,
-      perfil_sala_alta: p.perfil_sala_alta != null ? p.perfil_sala_alta : null,
-      status_internacao: 'ativa',
-      fonte_criacao: 'migracao_planilha',
-      created_by: 'kanban_foto'
-    };
-  });
+  const dryRun = !KF_RECONCILE_MODO_REAL;
+  const log = { inseridos: [], atualizados: [], sugestoes: [], giros: [], revisoes: [], erros: [] };
+  const leitosVazios = Array.isArray(kfState.leitosVazios) ? kfState.leitosVazios : [];
 
-  try {
-    const respI = await fetch(`${SB_URL}/rest/v1/internacoes_hmsa`, {
-      method: 'POST',
-      headers: { ...SB_H, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify(payload)
+  for (const p of kfState.pacientes) {
+    const leito = String(p.leito || '').trim();
+    if (!leito) { log.erros.push({ motivo: 'leito_vazio_no_payload', paciente: p }); continue; }
+
+    // T4: read-before-write
+    const { ok, cur } = await kfFetchLeitoAtual(leito);
+    if (!ok) { log.erros.push({ leito, motivo: 'leitura_falhou' }); continue; }
+
+    const ocrRow = Reconcile.mapOcrPacienteToReconcileRow(p, kfState.dataKanban);
+    const curReconcile = Reconcile.mapDbRowToReconcile(cur);
+    const camposTravados = cur ? cur.campos_travados : null;
+
+    const r = Reconcile.reconcile(curReconcile, ocrRow, camposTravados, leitosVazios, {
+      dryRun, hospital: HOSPITAL_ID, dataKanban: kfState.dataKanban
     });
-    if (!respI.ok) {
-      const txt = await respI.text();
-      throw new Error(`Erro ao salvar internações: ${txt.slice(0, 200)}`);
+
+    if (r.action === 'insert') {
+      log.inseridos.push({ leito, id: r.payload.id });
+      if (!dryRun) {
+        const dbPayload = Reconcile.mapReconcilePayloadToDb(r.payload, { setor: kfState.setorSigla });
+        await fetch(`${SB_URL}/rest/v1/internacoes_hmsa`, {
+          method: 'POST',
+          headers: { ...SB_H, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(dbPayload)
+        }).catch(e => log.erros.push({ leito, motivo: 'insert_falhou', detalhe: e.message }));
+      }
+    } else if (r.action === 'merge') {
+      log.atualizados.push({ leito, id: r.payload.id });
+      if (r.pendencia && r.pendencia.tipo === 'sugestao_campo') {
+        log.sugestoes.push({ leito, campos: r.pendencia.campos });
+        kfLogPendencia('sugestao_campo', ocrRow, cur && cur.id, { campos_divergentes: r.pendencia.campos });
+      }
+      if (!dryRun) {
+        const dbPayload = Reconcile.mapReconcilePayloadToDb(r.payload, { setor: kfState.setorSigla });
+        await fetch(`${SB_URL}/rest/v1/internacoes_hmsa?id=eq.${encodeURIComponent(r.payload.id)}`, {
+          method: 'PATCH',
+          headers: { ...SB_H, 'Prefer': 'return=minimal' },
+          body: JSON.stringify(dbPayload)
+        }).catch(e => log.erros.push({ leito, motivo: 'merge_falhou', detalhe: e.message }));
+      }
+    } else if (r.action === 'bloqueia') {
+      log.giros.push({ leito, score: r.score });
+      await kfLogPendencia('giro', r.pendencia.payload_ocr, cur && cur.id, { giro_motivo: null });
+    } else {
+      // revisao (AMBIGUO ou leito ausente sem confirmação de vazio)
+      log.revisoes.push({ leito, score: r.score, motivo: r.pendencia && r.pendencia.motivo });
+      await kfLogPendencia('revisao', r.pendencia.payload_ocr, cur && cur.id, {});
     }
-  } catch (e) {
-    kfShowSection('review');
-    kfShowError(e.message || 'Erro ao salvar. Tente de novo.');
-    if (btn) btn.disabled = false;
-    return;
   }
 
-  // 2. Grava kanban_snapshots
+  // [T13, CA-12.2] Log estruturado do que foi (ou teria sido, em modo sombra) decidido.
+  console.info('[kf-reconcile]', JSON.stringify({
+    modo: dryRun ? 'sombra' : 'real',
+    dataKanban: kfState.dataKanban,
+    setor: kfState.setorSigla,
+    inseridos: log.inseridos.length,
+    atualizados: log.atualizados.length,
+    sugestoes: log.sugestoes.length,
+    giros: log.giros.length,
+    revisoes: log.revisoes.length,
+    erros: log.erros.length,
+    detalhe: log
+  }));
+
+  // Grava kanban_snapshots (evento de processamento da foto — não é dado clínico, roda
+  // independente do modo sombra, igual antes)
   const snapId = crypto.randomUUID ? crypto.randomUUID() : `snap-${Date.now()}`;
   await fetch(`${SB_URL}/rest/v1/kanban_snapshots`, {
     method: 'POST',
@@ -27777,7 +27894,7 @@ async function kfExecutarGravacao() {
     })
   }).catch(() => {});
 
-  // 3. Grava kanban_image_hashes (CA-01.5: imagem descartada, só hash persiste)
+  // Grava kanban_image_hashes (CA-01.5: imagem descartada, só hash persiste)
   await fetch(`${SB_URL}/rest/v1/kanban_image_hashes`, {
     method: 'POST',
     headers: { ...SB_H, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
@@ -27790,18 +27907,165 @@ async function kfExecutarGravacao() {
     })
   }).catch(() => {});
 
-  // Sucesso
+  // Sucesso — mensagem reflete o modo real (CA-12.1: em modo sombra nada foi gravado em internacoes_hmsa)
   kfShowSection('success');
   const _n = kfState.pacientes.length;
   const _s = kfState.setorNome || kfState.setorSigla || '?';
-  if (typeof showToast === 'function') showToast(`${_n} paciente${_n !== 1 ? 's' : ''} do ${_s} atualizados`, 'success'); // [P0.3]
-  document.getElementById('kf-success-msg').innerHTML =
-    `✅ ${_n} paciente${_n !== 1 ? 's' : ''} do ${_s} gravados (${kfState.dataKanban}).` +
-    ` <button type="button" onclick="switchView('gestao-leitos','dashboard')" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0 8px 0 0;font-weight:600;text-decoration:underline;min-height:44px">Ver no painel →</button>` +
-    ` <button type="button" onclick="renderKanbanFoto()" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0;font-weight:600;text-decoration:underline;min-height:44px">Enviar nova foto</button>`;
+  const _pend = log.giros.length + log.revisoes.length;
+  if (dryRun) {
+    if (typeof showToast === 'function') showToast(`Modo sombra: ${_n} paciente${_n !== 1 ? 's' : ''} do ${_s} analisados, nenhum dado gravado ainda`, 'info');
+    document.getElementById('kf-success-msg').innerHTML =
+      `🕶️ Modo sombra: ${_n} paciente${_n !== 1 ? 's' : ''} do ${_s} analisados (${kfState.dataKanban}) — ${log.inseridos.length} seriam inseridos, ${log.atualizados.length} atualizados, ${_pend} foram pra fila de conferência. Nenhum dado clínico foi alterado.` +
+      ` <button type="button" onclick="switchView('gestao-leitos','dashboard')" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0 8px 0 0;font-weight:600;text-decoration:underline;min-height:44px">Ver no painel →</button>` +
+      ` <button type="button" onclick="renderKanbanFoto()" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0;font-weight:600;text-decoration:underline;min-height:44px">Enviar nova foto</button>`;
+  } else {
+    if (typeof showToast === 'function') showToast(`${_n} paciente${_n !== 1 ? 's' : ''} do ${_s} atualizados`, 'success'); // [P0.3]
+    document.getElementById('kf-success-msg').innerHTML =
+      `✅ ${_n} paciente${_n !== 1 ? 's' : ''} do ${_s} gravados (${kfState.dataKanban})${_pend ? ` — ${_pend} foram pra fila de conferência` : ''}.` +
+      ` <button type="button" onclick="switchView('gestao-leitos','dashboard')" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0 8px 0 0;font-weight:600;text-decoration:underline;min-height:44px">Ver no painel →</button>` +
+      ` <button type="button" onclick="renderKanbanFoto()" style="background:none;border:none;color:var(--accent,#14b8a6);cursor:pointer;font-size:14px;padding:0;font-weight:600;text-decoration:underline;min-height:44px">Enviar nova foto</button>`;
+  }
+
+  // Erros pontuais (leitura falhou p/ 1 leito, etc.) não abortam o batch — cada paciente é
+  // reconciliado independentemente — mas o operador precisa saber que algo ficou de fora.
+  if (log.erros.length && typeof showToast === 'function') {
+    showToast(`${log.erros.length} leito${log.erros.length !== 1 ? 's' : ''} não processado${log.erros.length !== 1 ? 's' : ''} (erro de leitura/gravação) — veja o console`, 'warning');
+  }
 
   // Recarrega dados do dashboard em background
   if (typeof loadData === 'function') loadData();
+  if (btn) btn.disabled = false;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   [Fase 2 HMAGR — T11] Fila de pendências: resolução de GIRO
+   CA-09.3 (parte UI) + CA-13.4 (parte "Dar baixa") + CA-08.3/CA-11.2 (invalidação de
+   overrides/campos_travados do episódio anterior no giro). Reusa o MESMO modal de ação
+   já usado por _intHandlerDarAlta (`#acao-modal`) — nenhum modal novo criado (spec §3).
+   Chamado hoje via console/teste; a wiring do clique no chip é T17 (fora de escopo aqui).
+═══════════════════════════════════════════════════════════ */
+
+/**
+ * Abre o fluxo de resolução de uma pendência tipo='giro' — exige `giro_motivo` antes de
+ * admitir o paciente da foto (`payload_ocr`) como novo ocupante do leito. `pendenciaId` é
+ * o `id` da linha em kanban_reconcile_pendencias (best-effort: se a tabela ainda não
+ * existir, mostra erro amigável em vez de quebrar).
+ */
+async function kfResolverGiroPendencia(pendenciaId) {
+  let pend;
+  try {
+    const url = `${SB_URL}/rest/v1/kanban_reconcile_pendencias?id=eq.${encodeURIComponent(pendenciaId)}&status=eq.pendente&select=*`;
+    const resp = await fetch(url, { headers: SB_H });
+    if (!resp.ok) { showToast('Pendência não encontrada.', 'error'); return; }
+    const rows = await resp.json();
+    if (!rows.length) { showToast('Pendência não encontrada ou já resolvida.', 'error'); return; }
+    pend = rows[0];
+  } catch (e) {
+    showToast('Erro ao buscar pendência: ' + (e.message || e), 'error');
+    return;
+  }
+  if (pend.tipo !== 'giro') { showToast('Esta pendência não é um giro pendente de baixa.', 'warning'); return; }
+
+  const ocr = pend.payload_ocr || {};
+  const leito = ocr.leito || '?';
+
+  document.getElementById('acao-modal-title').textContent = `Dar baixa e confirmar giro · Leito ${leito}`;
+  document.getElementById('acao-modal-body').innerHTML = `
+    <div style="font-size:11px;color:var(--textMuted);margin-bottom:8px">
+      A foto reconheceu um paciente diferente no leito ${escapeHtml(String(leito))}. Confirme o motivo
+      da saída do ocupante anterior antes de admitir o novo paciente.
+    </div>
+    <label>Motivo da saída</label>
+    <select id="giro-motivo">
+      <option value="">— selecione —</option>
+      <option value="alta">Alta</option>
+      <option value="transferencia">Transferência</option>
+      <option value="evasao">Evasão</option>
+      <option value="obito">Óbito</option>
+      <option value="duplicado">Duplicado (cadastro errado)</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:8px">
+      <input type="checkbox" id="giro-confirm">
+      <span>Confirmo a saída do ocupante anterior e a entrada do novo paciente</span>
+    </label>
+  `;
+  document.getElementById('acao-modal-save').onclick = async () => {
+    const motivo = document.getElementById('giro-motivo').value;
+    const ok = document.getElementById('giro-confirm').checked;
+    if (!motivo || !Reconcile.GIRO_MOTIVOS.includes(motivo)) { showToast('Selecione o motivo do giro.', 'warning'); return; }
+    if (!ok) { showToast('Marque o check pra confirmar.', 'warning'); return; }
+    await kfConfirmarGiro(pend, motivo);
+  };
+  document.getElementById('acao-modal').classList.add('open');
+  document.getElementById('acao-modal-overlay').classList.add('open');
+  document.getElementById('acao-modal').setAttribute('aria-hidden', 'false');
+}
+
+/**
+ * Aplica o giro confirmado por um humano (ato explícito — motivo + checkbox, não é
+ * reconcile() auto-aplicando). Por isso NÃO é gateado por KF_RECONCILE_MODO_REAL: essa
+ * flag só protege a aplicação AUTOMÁTICA de insert/merge em kfExecutarGravacao (T14).
+ * Baixa do ocupante anterior é sempre ato humano, nunca decidida por reconcile() — mantém
+ * o invariante CA-09.5 (reconcile() nunca muda status_internacao sozinho).
+ * CA-08.3/CA-11.2: limpa overrides (leito_overrides) e campos_travados do idEpisodio
+ * anterior — senão o lock/override do paciente que saiu contaminaria o novo ocupante.
+ */
+async function kfConfirmarGiro(pend, motivo) {
+  const ocr = pend.payload_ocr || {};
+  const leito = ocr.leito;
+  const curId = pend.cur_id;
+  const userName = (typeof getUserName === 'function' && getUserName()) || 'maestro';
+
+  try {
+    // 1. Baixa do ocupante anterior + limpa campos_travados (CA-11.2) — ato humano.
+    if (curId) {
+      await fetch(`${SB_URL}/rest/v1/internacoes_hmsa?id=eq.${encodeURIComponent(curId)}`, {
+        method: 'PATCH',
+        headers: { ...SB_H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          // [Builder note] status_internacao não tem CHECK constraint documentado no repo;
+          // por segurança reusa só os 2 valores já usados em produção em outros pontos do
+          // código ('ativa'/'alta_medica'/'cancelada' — ver index.html:16421, 15862). O
+          // giro_motivo real (alta|transferencia|evasao|obito|duplicado) fica preservado
+          // sem perda em kanban_reconcile_pendencias.giro_motivo (auditável ali).
+          status_internacao: motivo === 'alta' ? 'alta_medica' : 'cancelada',
+          campos_travados: null,
+          updated_at: new Date().toISOString(),
+          updated_by: userName
+        })
+      });
+      // CA-08.3: invalida overrides do idEpisodio anterior (idEpisodio == internacoes_hmsa.id)
+      if (typeof KaizenStore !== 'undefined' && KaizenStore.resetLeitoOverride) {
+        KaizenStore.resetLeitoOverride(curId);
+      } else if (typeof KaizenAPI !== 'undefined' && KaizenAPI.resetLeitoOverride) {
+        await KaizenAPI.resetLeitoOverride(curId).catch(() => {});
+      }
+    }
+
+    // 2. Admite o novo paciente (mesma trilha de VAZIO->insert de reconcile()).
+    const r = Reconcile.reconcile(null, ocr, [], [leito], { dryRun: false, hospital: HOSPITAL_ID, dataKanban: ocr.data_kanban });
+    if (r.action === 'insert' && r.payload) {
+      const dbPayload = Reconcile.mapReconcilePayloadToDb(r.payload, { setor: ocr.setor || null });
+      await fetch(`${SB_URL}/rest/v1/internacoes_hmsa`, {
+        method: 'POST',
+        headers: { ...SB_H, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(dbPayload)
+      });
+    }
+
+    // 3. Marca a pendência como resolvida (best-effort).
+    await fetch(`${SB_URL}/rest/v1/kanban_reconcile_pendencias?id=eq.${encodeURIComponent(pend.id)}`, {
+      method: 'PATCH',
+      headers: { ...SB_H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ giro_motivo: motivo, status: 'resolvida', updated_at: new Date().toISOString() })
+    }).catch(() => {});
+
+    if (typeof closeAcaoEditModal === 'function') closeAcaoEditModal();
+    showToast(`Giro confirmado no leito ${leito} (${motivo}).`, 'success');
+    if (typeof loadData === 'function') loadData();
+  } catch (e) {
+    showToast('Erro ao confirmar giro: ' + (e.message || e), 'error');
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════

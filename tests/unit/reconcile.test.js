@@ -12,7 +12,11 @@ const {
   simNome,
   matchOccupant,
   reconcile,
-  GIRO_MOTIVOS
+  GIRO_MOTIVOS,
+  mapDbRowToReconcile,
+  mapOcrPacienteToReconcileRow,
+  mapReconcilePayloadToDb,
+  mapPendenciaTipoToDb
 } = require('../../lib/reconcile');
 
 // ── T1: buildIdEpisodio ──
@@ -280,4 +284,68 @@ describe('reconcile() com dryRun (CA-12.1, parte lógica)', () => {
     const r = reconcile(null, { leito: '301', nome: 'X', data_admissao: '2026-06-01', data_kanban: '2026-06-01' }, [], ['301']);
     assert.equal(r.applied, true);
   });
+});
+
+// ── T4/T5/T10: adapters DB <-> shape de reconcile() ──
+describe('mapDbRowToReconcile (adapter internacoes_hmsa -> reconcile)', () => {
+  it('mapeia colunas reais para o shape esperado por matchOccupant/reconcile', () => {
+    const row = {
+      id: 'HMAGR_ocr_301_2026-06-10', hospital: 'HMAGR', leito: '301',
+      nome_paciente: 'MARIA DA SILVA', idade: 67, cid_principal: 'IAM',
+      data_internacao: '2026-06-10', previsao_kanban: '2026-06-20',
+      pendencia: 'ATB', perfil_sala_alta: true, campos_travados: { diagnostico: true }
+    };
+    const r = mapDbRowToReconcile(row);
+    assert.equal(r.nome, 'MARIA DA SILVA');
+    assert.equal(r.diagnostico, 'IAM');
+    assert.equal(r.data_admissao, '2026-06-10');
+    assert.equal(r.data_provavel_alta, '2026-06-20');
+    assert.equal(r.pendencias, 'ATB');
+    assert.deepEqual(r.campos_travados, { diagnostico: true });
+  });
+
+  it('row null/undefined -> null (equivale a leito vazio pro matchOccupant)', () => {
+    assert.equal(mapDbRowToReconcile(null), null);
+    assert.equal(mapDbRowToReconcile(undefined), null);
+  });
+});
+
+describe('mapOcrPacienteToReconcileRow (adapter kfState.pacientes -> reconcile ocrRow)', () => {
+  it('mapeia paciente extraído + dataKanban', () => {
+    const p = { leito: ' 301 ', nome: 'J.M.S.', idade: 67, diagnostico: 'IAM', data_admissao: '2026-06-10', data_provavel_alta: '2026-06-20', pendencias: 'ATB', perfil_sala_alta: false };
+    const r = mapOcrPacienteToReconcileRow(p, '2026-06-15');
+    assert.equal(r.leito, '301', 'leito deve ser trimado');
+    assert.equal(r.nome, 'J.M.S.');
+    assert.equal(r.data_kanban, '2026-06-15');
+  });
+});
+
+describe('mapReconcilePayloadToDb (adapter reconcile payload -> internacoes_hmsa)', () => {
+  it('mapeia payload de insert (com fonte=foto) para fonte_criacao=migracao_planilha (CHECK constraint)', () => {
+    const payload = { id: 'HMAGR_ocr_301_2026-06-15', hospital: 'HMAGR', leito: '301', nome: 'J.M.S.', diagnostico: 'IAM', status_internacao: 'ativa', fonte: 'foto' };
+    const db = mapReconcilePayloadToDb(payload, { setor: 'CM' });
+    assert.equal(db.nome_paciente, 'J.M.S.');
+    assert.equal(db.cid_principal, 'IAM');
+    assert.equal(db.setor, 'CM');
+    assert.equal(db.fonte_criacao, 'migracao_planilha');
+    assert.equal(db.created_by, 'kanban_foto');
+    assert.equal(db.status_internacao, 'ativa');
+  });
+
+  it('mapeia payload de merge (sem fonte) sem incluir fonte_criacao/created_by', () => {
+    const payload = { id: 'x', hospital: 'HMAGR', leito: '301', pendencias: 'ATB', status_internacao: 'ativa' };
+    const db = mapReconcilePayloadToDb(payload, {});
+    assert.equal('fonte_criacao' in db, false);
+    assert.equal(db.pendencia, 'ATB');
+  });
+
+  it('payload null -> null', () => {
+    assert.equal(mapReconcilePayloadToDb(null), null);
+  });
+});
+
+describe('mapPendenciaTipoToDb (adapter pendencia.tipo -> enum kanban_reconcile_pendencias.tipo)', () => {
+  it('giro -> giro', () => { assert.equal(mapPendenciaTipoToDb('giro'), 'giro'); });
+  it('sugestao_campo -> sugestao_campo', () => { assert.equal(mapPendenciaTipoToDb('sugestao_campo'), 'sugestao_campo'); });
+  it('revisao (fora do enum da migration) -> divergente', () => { assert.equal(mapPendenciaTipoToDb('revisao'), 'divergente'); });
 });
