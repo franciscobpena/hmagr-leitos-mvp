@@ -6,8 +6,8 @@
  */
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { simNome } = require('../../lib/reconcile');
-const { ehProvavelDuplicado, escolherChipDoLeito, diffsParaModal, CAMPO_INPUT_MAP } = require('../../lib/reconcile-ui');
+const { simNome, LIMIAR_MESMO } = require('../../lib/reconcile');
+const { ehProvavelDuplicado, escolherChipDoLeito, diffsParaModal, CAMPO_INPUT_MAP, LIMIAR_DUPLICADO } = require('../../lib/reconcile-ui');
 
 // ── ehProvavelDuplicado ──
 describe('ehProvavelDuplicado (heurística Duplicado, HIPÓTESE spec §5)', () => {
@@ -139,5 +139,12 @@ describe('diffsParaModal (CA-13.4 — diff campo digitado x lido no modal "Confe
     assert.equal(CAMPO_INPUT_MAP.especialidade, undefined);
     assert.equal(CAMPO_INPUT_MAP.setor, undefined);
     assert.equal(CAMPO_INPUT_MAP.num_leito, undefined);
+  });
+});
+
+// ── S3 do review (01/jul): LIMIAR_DUPLICADO reusa LIMIAR_MESMO, não duplica o número mágico ──
+describe('LIMIAR_DUPLICADO (reuso de LIMIAR_MESMO de reconcile.js)', () => {
+  it('é o mesmo valor de LIMIAR_MESMO — fonte única, não duplicada', () => {
+    assert.equal(LIMIAR_DUPLICADO, LIMIAR_MESMO);
   });
 });

@@ -16,7 +16,8 @@ const {
   mapDbRowToReconcile,
   mapOcrPacienteToReconcileRow,
   mapReconcilePayloadToDb,
-  mapPendenciaTipoToDb
+  mapPendenciaTipoToDb,
+  mapGiroMotivoToStatus
 } = require('../../lib/reconcile');
 
 // ── T1: buildIdEpisodio ──
@@ -348,4 +349,20 @@ describe('mapPendenciaTipoToDb (adapter pendencia.tipo -> enum kanban_reconcile_
   it('giro -> giro', () => { assert.equal(mapPendenciaTipoToDb('giro'), 'giro'); });
   it('sugestao_campo -> sugestao_campo', () => { assert.equal(mapPendenciaTipoToDb('sugestao_campo'), 'sugestao_campo'); });
   it('revisao (fora do enum da migration) -> divergente', () => { assert.equal(mapPendenciaTipoToDb('revisao'), 'divergente'); });
+});
+
+// ── mapGiroMotivoToStatus (fix S2 #2 do review pós-Fase 2 HMAGR — 01/jul) ──
+// Antes: giro_motivo colapsava em só 2 valores ('alta_medica'/'cancelada'), perdendo a
+// distinção que _onda6ConfirmarOutrasSaidas (index.html:14827-14834) e o dashboard
+// (STATUS_LABEL/statusOpts) já fazem pros outros status. Cobre os 5 GIRO_MOTIVOS 1:1.
+describe('mapGiroMotivoToStatus (adapter giro_motivo -> internacoes_hmsa.status_internacao)', () => {
+  it('alta -> alta_medica', () => { assert.equal(mapGiroMotivoToStatus('alta'), 'alta_medica'); });
+  it('transferencia -> transferido_externo', () => { assert.equal(mapGiroMotivoToStatus('transferencia'), 'transferido_externo'); });
+  it('evasao -> evasao', () => { assert.equal(mapGiroMotivoToStatus('evasao'), 'evasao'); });
+  it('obito -> obito', () => { assert.equal(mapGiroMotivoToStatus('obito'), 'obito'); });
+  it('duplicado -> cancelada (cadastro errado, não é saída real)', () => { assert.equal(mapGiroMotivoToStatus('duplicado'), 'cancelada'); });
+  it('motivo não previsto -> cancelada (fallback conservador)', () => { assert.equal(mapGiroMotivoToStatus('lixo'), 'cancelada'); });
+  it('todos os GIRO_MOTIVOS têm mapeamento (sem undefined)', () => {
+    for (const m of GIRO_MOTIVOS) assert.notEqual(mapGiroMotivoToStatus(m), undefined);
+  });
 });

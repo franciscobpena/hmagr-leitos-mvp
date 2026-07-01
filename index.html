@@ -28170,7 +28170,7 @@ async function kfExecutarGravacao() {
  * o `id` da linha em kanban_reconcile_pendencias (best-effort: se a tabela ainda não
  * existir, mostra erro amigável em vez de quebrar).
  * [T16/T17] `opts.preSelecionarMotivo`: quando o chip "Duplicado" (heurística de nome
- * repetido, ver _reconcileEhProvavelDuplicado) chama este mesmo fluxo, pré-seleciona
+ * repetido, ver ehProvavelDuplicado em lib/reconcile-ui.js) chama este mesmo fluxo, pré-seleciona
  * 'duplicado' no <select> abaixo — não cria um modal novo pro caso duplicado, o
  * <option value="duplicado"> já existia neste modal antes desta entrega.
  */
@@ -28242,23 +28242,30 @@ async function kfConfirmarGiro(pend, motivo) {
   const userName = (typeof getUserName === 'function' && getUserName()) || 'maestro';
 
   try {
-    // 1. Baixa do ocupante anterior + limpa campos_travados (CA-11.2) — ato humano.
+    // 1. Baixa do ocupante anterior — ato humano. Separado em 2 PATCHs pra isolar risco:
+    //    o de status_internacao É a baixa em si (bloqueante — sem ele, 2 pacientes ficam
+    //    ativos no mesmo leito sem erro visível); o de campos_travados (CA-11.2) é
+    //    best-effort porque a coluna ainda não existe no banco real (migration
+    //    aditiva/nullable pendente) e não pode quebrar a baixa por causa disso.
     if (curId) {
-      await fetch(`${SB_URL}/rest/v1/internacoes_hmsa?id=eq.${encodeURIComponent(curId)}`, {
+      const respBaixa = await fetch(`${SB_URL}/rest/v1/internacoes_hmsa?id=eq.${encodeURIComponent(curId)}`, {
         method: 'PATCH',
         headers: { ...SB_H, 'Prefer': 'return=minimal' },
         body: JSON.stringify({
-          // [Builder note] status_internacao não tem CHECK constraint documentado no repo;
-          // por segurança reusa só os 2 valores já usados em produção em outros pontos do
-          // código ('ativa'/'alta_medica'/'cancelada' — ver index.html:16421, 15862). O
-          // giro_motivo real (alta|transferencia|evasao|obito|duplicado) fica preservado
-          // sem perda em kanban_reconcile_pendencias.giro_motivo (auditável ali).
-          status_internacao: motivo === 'alta' ? 'alta_medica' : 'cancelada',
-          campos_travados: null,
+          status_internacao: Reconcile.mapGiroMotivoToStatus(motivo),
           updated_at: new Date().toISOString(),
           updated_by: userName
         })
       });
+      if (!respBaixa.ok) throw new Error('PATCH baixa (status_internacao) falhou: HTTP ' + respBaixa.status);
+
+      // CA-11.2: limpa campos_travados do episódio anterior — best-effort (ver nota acima).
+      await fetch(`${SB_URL}/rest/v1/internacoes_hmsa?id=eq.${encodeURIComponent(curId)}`, {
+        method: 'PATCH',
+        headers: { ...SB_H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ campos_travados: null })
+      }).catch(() => {});
+
       // CA-08.3: invalida overrides do idEpisodio anterior (idEpisodio == internacoes_hmsa.id)
       if (typeof KaizenStore !== 'undefined' && KaizenStore.resetLeitoOverride) {
         KaizenStore.resetLeitoOverride(curId);
