@@ -267,4 +267,48 @@ test.describe('Kanban Foto OCR — HMAGR', () => {
     // TODO (chamada do chip, T16/T17): clicar no chip "Dar baixa" do bed-card, confirmar que o
     // modal reusado (#acao-modal) exige seleção de giro_motivo antes de habilitar a confirmação.
   });
+
+  // ── T15/T16/T17/CA-11.1 (Fase 2, 3ª chamada) — pendentes de verdade, mesmo motivo do
+  // bloco acima: dependem do dashboard de gestão de leitos (#view-gestao-leitos), que exige
+  // /api/auth/verify real (auth-guard.js) — sem `vercel dev` rodando nesta sessão, nenhum
+  // teste deste bloco roda localmente. Escritos e revisados por leitura, não executados.
+  // reconcilePendenciasPorLeito/_reconcileChipDoLeito/_renderReconcileChip/abrirConferirDado/
+  // kfResolverGiroPendencia(id, opts)/_travarCamposEditados existem e são chamáveis
+  // diretamente (smoke: node --check no bundle inline passou, ver PR); a lógica pura de
+  // priorização/diff que dá suporte a estes cenários JÁ está coberta por
+  // tests/unit/reconcile-ui.test.js (16 casos, 0 fail).
+  test.skip('CA-13.1/CA-13.2/CA-13.3 — chip único por leito, prioridade e sem nome', async ({ page }) => {
+    // TODO (sessão com `vercel dev` de pé): mockar GET kanban_reconcile_pendencias com 2 linhas
+    // pendentes pro mesmo cur_id (tipo='giro' + tipo='divergente'), recarregar o dashboard de
+    // gestão de leitos, localizar o bed-card do leito e assert:
+    //  - exatamente 1 <span class="badge-reconcile"> renderizado (CA-13.1)
+    //  - texto do chip === "Dar baixa +1" (giro vence divergente) (CA-13.1)
+    //  - .badge-reconcile tem border-left computado != 'none' e background-color bate com o
+    //    token de .badge-ov (CA-13.2)
+    //  - textContent/title/aria-label do chip não contém nenhuma substring de nome_paciente
+    //    presente no payload_ocr mockado (CA-13.3)
+  });
+
+  test.skip('CA-13.4 "Dar baixa"/"Duplicado" — clique no chip abre o MESMO modal de giro já existente', async ({ page }) => {
+    // TODO: clicar no chip, assert que #acao-modal abre com título "Dar baixa e confirmar
+    // giro" (mesmo modal de kfResolverGiroPendencia, T11) — nenhum modal novo. Cenário
+    // "Duplicado": pendência de giro cujo payload_ocr.nome bate com outro paciente ativo em
+    // outro leito do fixture — assert que o <select id="giro-motivo"> abre com
+    // value="duplicado" pré-selecionado.
+  });
+
+  test.skip('CA-13.4 "Conferir dado" — clique no chip abre abrirEditarLeito com o campo divergente destacado', async ({ page }) => {
+    // TODO: mockar pendência tipo='sugestao_campo' com payload_ocr.campos_divergentes =
+    // [{campo:'diagnostico', valorAtual:'IAM', valorFoto:'AVC'}]; clicar no chip "Conferir
+    // dado"; assert que #el-hip tem a classe .el-input-divergente e que existe um
+    // .el-sugestao-foto com texto "Foto sugere: AVC" logo abaixo do input — reusa o form de
+    // abrirEditarLeito, nenhum campo novo criado.
+  });
+
+  test.skip('CA-11.1 — confirmar edição manual trava só os campos alterados em campos_travados', async ({ page }) => {
+    // TODO: abrir "Corrigir dados do leito" (pencil icon), alterar só o campo "Hipótese
+    // diagnóstica", salvar; assert que o PATCH internacoes_hmsa?id=eq.<id> enviado por
+    // _travarCamposEditados tem body.campos_travados = {diagnostico: true} — SEM
+    // data_admissao/data_provavel_alta/pendencias (campos não tocados nesta interação).
+  });
 });

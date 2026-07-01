@@ -528,6 +528,35 @@ section { margin-bottom:28px; }
 .badge-ov  { background:rgba(167,139,250,.85); color:#fff; }
 .bed-card-ov { box-shadow: inset 0 0 0 1px rgba(167,139,250,0.55); }
 
+/* [Fase 2 HMAGR — reconciliação foto-OCR, T15, CA-13.2] Chip de pendência (Dar baixa /
+   Duplicado / Conferir dado). Reusa o MESMO token de cor do badge-ov (rgba(167,139,250)) —
+   .badge-ov não foi alterado (segue em uso pra override EGA/NIR). Acento de borda esquerda
+   3px diferencia visualmente do badge simples; versão compacta assume o texto em grid
+   apertado (<=480px, mesmo breakpoint já usado no resto do CSS deste arquivo). Clicável
+   (T17): cursor pointer + outline de foco, mesmo padrão dos spans role="button" do card. */
+.badge-reconcile {
+  background: rgba(167,139,250,.85);
+  color: #fff;
+  border-left: 3px solid rgba(109,40,217,.95);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.badge-reconcile:hover, .badge-reconcile:focus-visible {
+  background: rgba(167,139,250,1);
+  outline: 2px solid rgba(255,255,255,.5);
+  outline-offset: 1px;
+}
+.badge-reconcile-compact { display: none; }
+@media (max-width: 480px) {
+  .badge-reconcile-full    { display: none; }
+  .badge-reconcile-compact { display: inline; }
+}
+/* [T17] Realce de campo com sugestão divergente da foto no modal "Conferir dado"
+   (abrirEditarLeito) — mesmo token de cor do chip, sem modal novo (spec §3). */
+.el-input-divergente { outline: 2px solid rgba(167,139,250,.85); outline-offset: 1px; }
+.el-sugestao-foto { font-size: 10px; color: #c4b5fd; margin: -4px 0 8px; }
+
 /* [Fase 47] Botão lápis discreto no canto pra abrir modal de correção EGA/NIR */
 /* [HOB 2026-05-08 UX] Estado disabled padronizado pra botoes (Heurística Nielsen #1: feedback de estado).
    Reduz opacity + cursor:not-allowed + remove pointer events. Pra ser usado quando button.disabled=true. */
@@ -8379,6 +8408,11 @@ body.is-edit-focus [data-edit-focus] {
      (nota do T1, docs/tasks-fase2-reconciliacao-ocr.md). Precisa carregar ANTES do script
      principal abaixo, que usa window.Reconcile em kfExecutarGravacao/kfConfirmarGiro. -->
 <script src="lib/reconcile.js"></script>
+<!-- [Fase 2 HMAGR — T16/T17] lib/reconcile-ui.js: priorização do chip (CA-13.1) + diff
+     campo-a-campo do modal "Conferir dado" (CA-13.4). Separado de lib/reconcile.js de
+     propósito — não altera o módulo já testado das Partes 1/2 (ver comentário no topo do
+     arquivo). Testável via tests/unit/reconcile-ui.test.js. -->
+<script src="lib/reconcile-ui.js"></script>
 <script>
 'use strict';
 
@@ -8471,6 +8505,14 @@ async function sbPatchOptimistic(table, id, updatedAt, body, contextLabel) {
 
 /* ─── STATE ─── */
 let allPatients  = [];
+/* [Fase 2 HMAGR — reconciliação OCR, T16] idEpisodio (= internacoes_hmsa.id = cur_id em
+   kanban_reconcile_pendencias) -> array de pendências status='pendente' daquele leito.
+   Populado por _carregarReconcilePendencias() dentro de loadData(). */
+let reconcilePendenciasPorLeito = {};
+/* [Fase 2 HMAGR — reconciliação OCR, T17/CA-11.1] Snapshot dos campos travável no
+   momento em que abrirEditarLeito() abre o modal — usado por _salvarEditarLeito pra
+   detectar quais campos o operador de fato alterou (trava só esses). */
+let _editarLeitoBaseline = null;
 let usingDemo    = false;
 let modalIdx     = null;
 let modalKey     = null;
@@ -8849,6 +8891,7 @@ async function loadData() {
     const rows = await resp.json();
     allPatients = mapInternacoesAPatients(rows || []);
     usingDemo = false;
+    await _carregarReconcilePendencias(); // [T16] best-effort — ver função, não bloqueia o dashboard se falhar
     onDataReady();
     if (allPatients.length === 0) {
       console.info('[HJXXIII] Nenhuma internação ativa. Cadastre via aba Internações pra alimentar o dashboard.');
@@ -8998,6 +9041,36 @@ function fallbackDemo() {
   usingDemo   = true;
   allPatients = buildDemoData();
   onDataReady();
+}
+
+/**
+ * [Fase 2 HMAGR — reconciliação OCR, T16] Carrega a fila de pendências pendentes
+ * (kanban_reconcile_pendencias) e agrupa em reconcilePendenciasPorLeito por cur_id
+ * (= idEpisodio = internacoes_hmsa.id). Best-effort/non-blocking: a tabela pode ainda não
+ * existir (migration docs/migrations/2026-07-01-reconciliacao-ocr-hmagr.sql pendente de
+ * aplicação, ver spec §3) — nesse caso os chips simplesmente não aparecem, o dashboard
+ * não quebra. Pendências com cur_id nulo (leito ausente sem confirmação de vazio, branch
+ * VAZIO->revisao de reconcile()) não têm card de paciente pra anexar o chip e são
+ * descartadas aqui (ficam só auditáveis via Supabase direto).
+ */
+async function _carregarReconcilePendencias() {
+  const mapa = {};
+  try {
+    const url = `${SB_URL}/rest/v1/kanban_reconcile_pendencias`
+      + `?hospital_id=eq.${encodeURIComponent(HOSPITAL_ID)}`
+      + `&status=eq.pendente`
+      + `&select=id,tipo,cur_id,payload_ocr,giro_motivo,created_at`
+      + `&order=created_at.asc`;
+    const resp = await fetch(url, { headers: SB_H });
+    if (resp.ok) {
+      const rows = await resp.json();
+      (rows || []).forEach(r => {
+        if (!r.cur_id) return;
+        (mapa[r.cur_id] = mapa[r.cur_id] || []).push(r);
+      });
+    }
+  } catch (_) { /* best-effort — tabela pode não existir ainda */ }
+  reconcilePendenciasPorLeito = mapa;
 }
 
 function onDataReady() {
@@ -9237,6 +9310,55 @@ function _barreirasResumo(obj) {
   return { tag, tagFull, tooltip, count: arr.length, all: arr };
 }
 
+/* ═══════════════════════════════════════════════════════════
+   [Fase 2 HMAGR — reconciliação foto-OCR, T16] Chip de pendência no bed-card.
+   CA-13.1 (prioridade + sufixo +N), CA-13.2 (CSS, ver .badge-reconcile), CA-13.3 (sem
+   nome), CA-13.4 (clique reusa fluxos existentes, ver T17 abaixo).
+═══════════════════════════════════════════════════════════ */
+
+/**
+ * Escolhe a pendência mais prioritária dentre as do leito (cur_id === idEpisodio do
+ * card). Ordem fixa (CA-13.1): Dar baixa (giro) > Duplicado (giro + heurística de nome
+ * repetido) > Conferir dado (divergente/sugestao_campo). Retorna null se o leito não tem
+ * pendência pendente. Lógica pura em lib/reconcile-ui.js (testável, tests/unit/
+ * reconcile-ui.test.js) — esta função só injeta o estado do browser (allPatients,
+ * Reconcile.simNome) que o módulo puro não tem acesso direto.
+ */
+function _reconcileChipDoLeito(idEpisodio) {
+  const lista = reconcilePendenciasPorLeito[idEpisodio] || [];
+  const simNomeFn = (typeof Reconcile !== 'undefined' && Reconcile.simNome) || null;
+  return ReconcileUI.escolherChipDoLeito(lista, allPatients, simNomeFn);
+}
+
+const RECONCILE_CHIP_LABELS = {
+  baixa:     { label: 'Dar baixa',     compact: 'BX', title: 'A foto reconheceu outro paciente neste leito. Confirme o motivo da saída antes de admitir o novo.' },
+  duplicado: { label: 'Duplicado',     compact: 'DP', title: 'Possível recadastro duplicado — nome semelhante já ativo em outro leito. Confirme o motivo da saída.' },
+  conferir:  { label: 'Conferir dado', compact: 'CF', title: 'A foto trouxe um valor diferente do dado travado/atual neste leito. Confira antes de aceitar.' }
+};
+
+/* Renderiza exatamente 1 chip por leito (CA-13.1) — sem nome de paciente em texto/title/
+   aria-label em nenhum ponto (CA-13.3, LGPD); nome só aparece nos modais de resolução
+   (abreviado, ver abreviarNomePaciente), nunca aqui. */
+function _renderReconcileChip(idEpisodio) {
+  const info = _reconcileChipDoLeito(idEpisodio);
+  if (!info) return '';
+  const { principal, tipoChip, extra } = info;
+  const cfg = RECONCILE_CHIP_LABELS[tipoChip] || RECONCILE_CHIP_LABELS.conferir;
+  const suf = extra > 0 ? ` +${extra}` : '';
+  const idEpEsc = String(idEpisodio).replace(/'/g, '&#39;');
+  const pendIdEsc = String(principal.id).replace(/'/g, '&#39;');
+  // CA-13.4/T17: clique reusa fluxos já existentes — nenhum modal novo criado.
+  const clickJs = (tipoChip === 'baixa' || tipoChip === 'duplicado')
+    ? `kfResolverGiroPendencia('${pendIdEsc}'${tipoChip === 'duplicado' ? ", {preSelecionarMotivo:'duplicado'}" : ''})`
+    : `abrirConferirDado('${idEpEsc}', '${pendIdEsc}')`;
+  return `<span class="badge badge-reconcile" role="button" tabindex="0"
+      title="${escapeHtml(cfg.title)}"
+      aria-label="${escapeHtml(cfg.label + suf)}"
+      onclick="event.stopPropagation(); ${clickJs}"
+      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();${clickJs};}"
+    ><span class="badge-reconcile-full">${escapeHtml(cfg.label + suf)}</span><span class="badge-reconcile-compact">${escapeHtml(cfg.compact + suf)}</span></span>`;
+}
+
 function renderHeatmap(pts) {
   const t = getT();
   // [Fase 47] Aplica overrides EGA/NIR (correção manual sobre OCR) + filtra soft-deleted.
@@ -9319,6 +9441,7 @@ function renderHeatmap(pts) {
           ${/* [HOB 2026-05-08] Badge PA removido do card (Maestro: poluia visualmente). Funcao de Plano de Acao
               continua: ann ainda e' calculado pra outros usos (bed-ann-tag se quiser, futuro), mas nao vira badge. */ ''}
           ${hasOv ? '<span class="badge badge-ov" title="Leito corrigido manualmente (override EGA/NIR)">OV</span>' : ''}
+          ${_renderReconcileChip(p.idEpisodio)}
         </div>
         <span class="bed-alta-btn" role="button" tabindex="0" onclick="event.stopPropagation(); _intHandlerDarAlta('${idEpAttr}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();_intHandlerDarAlta('${idEpAttr}');}" title="Dar alta médica" aria-label="Dar alta médica do leito ${p.numLeito}">
           <i aria-hidden="true" data-lucide="check-circle"></i>
@@ -9766,11 +9889,22 @@ function closeModal() {
   });
 })();
 
+/* [Fase 2 HMAGR — reconciliação OCR, T17/CA-11.1] Vocabulário do modal de edição
+   (abrirEditarLeito) -> vocabulário de reconcile.js (único que applyFieldLock entende) e
+   cálculo de diffs pro modal "Conferir dado" (CA-13.4) — lógica pura, movida pra
+   lib/reconcile-ui.js (testável, tests/unit/reconcile-ui.test.js). Alias local mantém os
+   nomes já usados no resto deste arquivo (_editarLeitoBaseline, _travarCamposEditados). */
+const RECONCILE_CAMPO_INPUT_MAP = ReconcileUI.CAMPO_INPUT_MAP;
+const _reconcileDiffsParaModal = ReconcileUI.diffsParaModal;
+
 /* ═══════════════════════════════════════════════════════════
    [Fase 47] Editar leito (correção EGA/NIR sobre dado OCR)
    Reusa shell #acao-modal. Auth via requireEgaAuth (TTL 30min).
+   [T17] 2º parâmetro opcional `pendenciaParaConferir`: quando o chip "Conferir dado"
+   (T16) chama este mesmo fluxo via abrirConferirDado(), destaca os campos divergentes
+   da foto — reusa o form existente, nenhum modal novo criado (spec §3).
 ═══════════════════════════════════════════════════════════ */
-async function abrirEditarLeito(idEpisodio) {
+async function abrirEditarLeito(idEpisodio, pendenciaParaConferir) {
   if (!idEpisodio) { showToast('ID do episódio não disponível.', 'error'); return; }
   if (!(await requireEgaAuth())) return;
   // Busca paciente atual (com override já aplicado pra mostrar valores efetivos)
@@ -9779,6 +9913,15 @@ async function abrirEditarLeito(idEpisodio) {
   const paciente = _aplicarLeitoOverride(pacienteRaw);
   const ov = (typeof KaizenStore !== 'undefined' && KaizenStore.getLeitoOverride) ? KaizenStore.getLeitoOverride(idEpisodio) : null;
   const hasOv = !!ov;
+  // [CA-11.1] Baseline dos campos travável no momento em que o modal abre — usado por
+  // _salvarEditarLeito pra saber quais campos o operador de fato alterou nesta interação
+  // (trava só esses, não o form inteiro).
+  _editarLeitoBaseline = {
+    data_admissao:      paciente.dataAdmissao || '',
+    data_provavel_alta: paciente.previsaoAlta || '',
+    diagnostico:        paciente._hipoteseOverride || paciente.cidPrincipal || '',
+    pendencias:          paciente.statusPendencia || ''
+  };
   const wardOptions = WARD_ORDER.concat(['Sem enfermaria']).map(w => `<option value="${escapeHtml(w)}" ${paciente.setor === w ? 'selected' : ''}>${escapeHtml(w)}</option>`).join('');
   document.getElementById('acao-modal-title').textContent = `Corrigir leito ${paciente.numLeito || '—'}`;
   document.getElementById('acao-modal-body').innerHTML = `
@@ -9805,6 +9948,27 @@ async function abrirEditarLeito(idEpisodio) {
     <label>Observação</label>
     <textarea id="el-obs" rows="2" placeholder="Notas internas EGA/NIR (opcional)">${escapeHtml(paciente._observacaoOverride || '')}</textarea>
   `;
+  // [T17, CA-13.4 "Conferir dado"] Destaca campo(s) onde a foto sugere valor diferente do
+  // atual — reusa o form acima, só marca visualmente (.el-input-divergente) + nota abaixo
+  // do input (.el-sugestao-foto). Nenhum input novo criado.
+  if (pendenciaParaConferir) {
+    const diffs = _reconcileDiffsParaModal(pendenciaParaConferir, _editarLeitoBaseline);
+    if (diffs.length) {
+      const banner = document.createElement('p');
+      banner.style.cssText = 'font-size:11px;color:#c4b5fd;margin:0 0 10px;font-weight:600';
+      banner.textContent = `A foto trouxe ${diffs.length} valor${diffs.length > 1 ? 'es' : ''} diferente${diffs.length > 1 ? 's' : ''} do dado atual. Campo(s) destacado(s) abaixo.`;
+      document.getElementById('acao-modal-body').prepend(banner);
+      diffs.forEach(d => {
+        const input = document.getElementById(d.meta.input);
+        if (!input) return;
+        input.classList.add('el-input-divergente');
+        const hint = document.createElement('div');
+        hint.className = 'el-sugestao-foto';
+        hint.textContent = `Foto sugere: ${d.valorFoto}`;
+        input.insertAdjacentElement('afterend', hint);
+      });
+    }
+  }
   // Setor custom toggle
   const sel = document.getElementById('el-setor');
   const cus = document.getElementById('el-setor-custom');
@@ -9846,6 +10010,47 @@ async function abrirEditarLeito(idEpisodio) {
   setTimeout(() => document.getElementById('el-numleito')?.focus(), 50);
 }
 
+/**
+ * [T16/T17, CA-13.4 "Conferir dado"] Wrapper chamado pelo chip: busca a pendência já
+ * carregada em memória (reconcilePendenciasPorLeito, sem round-trip extra) e abre o
+ * mesmo modal de edição de sempre (abrirEditarLeito), passando a pendência pra destacar
+ * o(s) campo(s) divergente(s).
+ */
+function abrirConferirDado(idEpisodio, pendenciaId) {
+  const lista = reconcilePendenciasPorLeito[idEpisodio] || [];
+  const pend = lista.find(p => String(p.id) === String(pendenciaId)) || null;
+  return abrirEditarLeito(idEpisodio, pend);
+}
+
+/**
+ * [Fase 2 HMAGR — reconciliação OCR, T17, CA-11.1] Trava em internacoes_hmsa.campos_travados
+ * só os campos que o operador de fato alterou nesta edição (compara contra
+ * _editarLeitoBaseline capturado quando o modal abriu) — evita o risco identificado na
+ * Parte 2 de travar campo que o operador nem tocou. Read-then-write (GET + PATCH) porque
+ * campos_travados é jsonb: um PATCH direto substituiria a coluna inteira, perdendo locks
+ * de campos travados em edições anteriores. Best-effort/non-blocking, mesmo padrão de
+ * kfLogPendencia: a coluna pode não existir ainda (migration pendente, spec §3).
+ */
+async function _travarCamposEditados(idEpisodio, baseline, atual) {
+  if (!baseline) return;
+  const alterados = Object.keys(RECONCILE_CAMPO_INPUT_MAP)
+    .filter(campo => String(atual[campo] || '') !== String(baseline[campo] || ''));
+  if (!alterados.length) return;
+  try {
+    const getUrl = `${SB_URL}/rest/v1/internacoes_hmsa?id=eq.${encodeURIComponent(idEpisodio)}&select=campos_travados`;
+    const getResp = await fetch(getUrl, { headers: SB_H });
+    const rows = getResp.ok ? await getResp.json() : [];
+    const travadoAtual = (rows[0] && rows[0].campos_travados) || {};
+    const merged = { ...travadoAtual };
+    alterados.forEach(campo => { merged[campo] = true; });
+    await fetch(`${SB_URL}/rest/v1/internacoes_hmsa?id=eq.${encodeURIComponent(idEpisodio)}`, {
+      method: 'PATCH',
+      headers: { ...SB_H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ campos_travados: merged })
+    });
+  } catch (_) { /* best-effort — coluna/tabela pode não existir ainda (migration pendente) */ }
+}
+
 function _salvarEditarLeito(idEpisodio) {
   const sel = document.getElementById('el-setor');
   const cus = document.getElementById('el-setor-custom');
@@ -9862,6 +10067,14 @@ function _salvarEditarLeito(idEpisodio) {
     observacao:       (document.getElementById('el-obs').value || '').trim() || null,
     deleted_at:       null  // garante que salvar destrava soft-delete
   };
+  // [CA-11.1] Trava (best-effort, não bloqueia o save do override local) só os campos
+  // que mudaram desde que o modal abriu, no vocabulário de reconcile.js.
+  _travarCamposEditados(idEpisodio, _editarLeitoBaseline, {
+    data_admissao: patch.data_admissao || '',
+    data_provavel_alta: patch.previsao_alta || '',
+    diagnostico: patch.hipotese_diag || '',
+    pendencias: patch.status_pendencia || ''
+  });
   KaizenStore.saveLeitoOverride(idEpisodio, patch);
   closeAcaoEditModal();
   showToast('Correção salva. Leito atualizado na visualização.', 'success');
@@ -27843,7 +28056,13 @@ async function kfExecutarGravacao() {
       log.atualizados.push({ leito, id: r.payload.id });
       if (r.pendencia && r.pendencia.tipo === 'sugestao_campo') {
         log.sugestoes.push({ leito, campos: r.pendencia.campos });
-        kfLogPendencia('sugestao_campo', ocrRow, cur && cur.id, { campos_divergentes: r.pendencia.campos });
+        // [T16 bugfix] campos_divergentes NÃO é coluna de kanban_reconcile_pendencias
+        // (migration só tem id/hospital_id/tipo/payload_ocr/cur_id/giro_motivo/status) —
+        // passá-lo como extra de nível de coluna faria o POST voltar 400 e a pendência
+        // seria descartada em silêncio (best-effort engolindo o erro). payload_ocr é
+        // jsonb livre: embutir a lista de diffs ali é schema-safe e é o que
+        // abrirEditarLeito/_reconcileDiffsParaModal (T17) leem pra destacar o campo.
+        kfLogPendencia('sugestao_campo', { ...ocrRow, campos_divergentes: r.pendencia.campos }, cur && cur.id, {});
       }
       if (!dryRun) {
         const dbPayload = Reconcile.mapReconcilePayloadToDb(r.payload, { setor: kfState.setorSigla });
@@ -27950,8 +28169,13 @@ async function kfExecutarGravacao() {
  * admitir o paciente da foto (`payload_ocr`) como novo ocupante do leito. `pendenciaId` é
  * o `id` da linha em kanban_reconcile_pendencias (best-effort: se a tabela ainda não
  * existir, mostra erro amigável em vez de quebrar).
+ * [T16/T17] `opts.preSelecionarMotivo`: quando o chip "Duplicado" (heurística de nome
+ * repetido, ver _reconcileEhProvavelDuplicado) chama este mesmo fluxo, pré-seleciona
+ * 'duplicado' no <select> abaixo — não cria um modal novo pro caso duplicado, o
+ * <option value="duplicado"> já existia neste modal antes desta entrega.
  */
-async function kfResolverGiroPendencia(pendenciaId) {
+async function kfResolverGiroPendencia(pendenciaId, opts) {
+  const preSelecionarMotivo = (opts && opts.preSelecionarMotivo) || '';
   let pend;
   try {
     const url = `${SB_URL}/rest/v1/kanban_reconcile_pendencias?id=eq.${encodeURIComponent(pendenciaId)}&status=eq.pendente&select=*`;
@@ -27977,13 +28201,14 @@ async function kfResolverGiroPendencia(pendenciaId) {
     </div>
     <label>Motivo da saída</label>
     <select id="giro-motivo">
-      <option value="">— selecione —</option>
-      <option value="alta">Alta</option>
-      <option value="transferencia">Transferência</option>
-      <option value="evasao">Evasão</option>
-      <option value="obito">Óbito</option>
-      <option value="duplicado">Duplicado (cadastro errado)</option>
+      <option value="" ${preSelecionarMotivo ? '' : 'selected'}>— selecione —</option>
+      <option value="alta" ${preSelecionarMotivo === 'alta' ? 'selected' : ''}>Alta</option>
+      <option value="transferencia" ${preSelecionarMotivo === 'transferencia' ? 'selected' : ''}>Transferência</option>
+      <option value="evasao" ${preSelecionarMotivo === 'evasao' ? 'selected' : ''}>Evasão</option>
+      <option value="obito" ${preSelecionarMotivo === 'obito' ? 'selected' : ''}>Óbito</option>
+      <option value="duplicado" ${preSelecionarMotivo === 'duplicado' ? 'selected' : ''}>Duplicado (cadastro errado)</option>
     </select>
+    ${preSelecionarMotivo === 'duplicado' ? '<div style="font-size:10px;color:#c4b5fd;margin-top:4px">Nome semelhante já ativo em outro leito — motivo pré-selecionado, confira antes de salvar.</div>' : ''}
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:8px">
       <input type="checkbox" id="giro-confirm">
       <span>Confirmo a saída do ocupante anterior e a entrada do novo paciente</span>
