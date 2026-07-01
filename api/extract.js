@@ -26,6 +26,7 @@ function buildSystemPrompt() {
 1. **Identificar setor**: o cabeçalho do quadro contém a sigla do setor (CM, CT, CC1, CC2, OBS1, OBS2, UDC) e a data no formato "ATUALIZADO EM: DD/MM/AA".
 2. **Linha com texto = paciente**: mesmo se incompleto. Não descartar linhas parcialmente preenchidas.
 3. **Leitos inativos**: linhas com "BLOQUEADO", "EM REFORMA", "Em reforma" → capturar como leito inativo, NÃO como paciente.
+3b. **Leitos vazios**: linha do leito sem nenhum dado de paciente preenchido (célula de nome em branco, sem diagnóstico/data) — visivelmente sem ocupante. Capturar o número do leito em \`leitos_vazios\`. Isso é DISTINTO de leito inativo (bloqueado/reforma, que vai em \`leitos_inativos\`): leito vazio está disponível para receber paciente, leito inativo não.
 4. **STATUS da coluna colorida é IGNORADO** — não ler cor do quadro, não incluir no JSON. Status visual é calculado pelo sistema via datas.
 5. **Baixa confiança**: campo ilegível ou ambíguo → usar valor null e incluir o campo no array \`campos_baixa_confianca\`.
 6. **Nomes**: gravar como aparecem (iniciais F.J.A. ou nome completo). O sistema abrevia no display.
@@ -56,6 +57,7 @@ OUTPUT:
   "data_kanban": "2026-06-15",
   "confianca_setor": 0.98,
   "leitos_inativos": [],
+  "leitos_vazios": [],
   "pacientes": [
     {
       "leito": "301",
@@ -71,9 +73,9 @@ OUTPUT:
   ]
 }
 
-## Few-shot exemplo (Clínica do Trauma)
+## Few-shot exemplo (Clínica do Trauma — leito inativo E leito vazio)
 
-INPUT: quadro com cabeçalho "CT — ATUALIZADO EM: 16/06/26", linha "401 | Em reforma | — | — | — | — | — | — | —"
+INPUT: quadro com cabeçalho "CT — ATUALIZADO EM: 16/06/26", linha "401 | Em reforma | — | — | — | — | — | — | —", linha "402 | (em branco, sem nenhum dado) | — | — | — | — | — | — | —"
 
 OUTPUT:
 {
@@ -82,6 +84,7 @@ OUTPUT:
   "data_kanban": "2026-06-26",
   "confianca_setor": 0.97,
   "leitos_inativos": ["401"],
+  "leitos_vazios": ["402"],
   "pacientes": []
 }
 
@@ -101,7 +104,7 @@ async function logExtracao(payload) {
   } catch (_) { /* best-effort */ }
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
@@ -168,6 +171,7 @@ module.exports = async function handler(req, res) {
       data_kanban: new Date().toISOString().slice(0, 10),
       confianca_setor: 0.99,
       leitos_inativos: [],
+      leitos_vazios: [],
       pacientes: [mockPaciente]
     });
   }
@@ -270,3 +274,7 @@ module.exports = async function handler(req, res) {
     ...resultado
   });
 }
+
+module.exports = handler;
+// buildSystemPrompt exportado à parte pra ser testável sem chamada de rede (T3).
+module.exports.buildSystemPrompt = buildSystemPrompt;

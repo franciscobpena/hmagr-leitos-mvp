@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test:unit": "node --test tests/unit/dhash.test.js tests/unit/dedup.test.js tests/unit/parser.test.js tests/unit/fieldmap.test.js tests/unit/token.test.js tests/unit/auth-login.test.js",
+    "test:unit": "node --test tests/unit/dhash.test.js tests/unit/dedup.test.js tests/unit/parser.test.js tests/unit/fieldmap.test.js tests/unit/token.test.js tests/unit/auth-login.test.js tests/unit/reconcile.test.js tests/unit/extract-prompt.test.js",
     "test:e2e": "npx playwright test",
     "test": "npm run test:unit"
   },
