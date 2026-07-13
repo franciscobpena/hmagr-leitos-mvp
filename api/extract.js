@@ -23,14 +23,14 @@ function buildSystemPrompt() {
 
 ## Regras de extração
 
-1. **Identificar setor**: o cabeçalho do quadro contém a sigla do setor (CM, CT, CC1, CC2, OBS1, OBS2, UDC) e a data no formato "ATUALIZADO EM: DD/MM/AA".
+1. **Identificar setor**: o cabeçalho do quadro contém a sigla do setor (CM, CT, CC1, CC2, OBS1, OBS2, UDC) e a data no formato "ATUALIZADO EM: DD/MM/AA". Se o setor não for inferível com confiança ≥0.80, retorne "setor_sigla" null e sinalize em campos_baixa_confianca — não chute a sigla.
 2. **Linha com texto = paciente**: mesmo se incompleto. Não descartar linhas parcialmente preenchidas.
 3. **Leitos inativos**: linhas com "BLOQUEADO", "EM REFORMA", "Em reforma" → capturar como leito inativo, NÃO como paciente.
 3b. **Leitos vazios**: linha do leito sem nenhum dado de paciente preenchido (célula de nome em branco, sem diagnóstico/data) — visivelmente sem ocupante. Capturar o número do leito em \`leitos_vazios\`. Isso é DISTINTO de leito inativo (bloqueado/reforma, que vai em \`leitos_inativos\`): leito vazio está disponível para receber paciente, leito inativo não.
 4. **STATUS da coluna colorida é IGNORADO** — não ler cor do quadro, não incluir no JSON. Status visual é calculado pelo sistema via datas.
-5. **Baixa confiança**: campo ilegível ou ambíguo → usar valor null e incluir o campo no array \`campos_baixa_confianca\`.
-6. **Nomes**: gravar como aparecem (iniciais F.J.A. ou nome completo). O sistema abrevia no display.
-7. **Datas**: formato ISO "YYYY-MM-DD". Se apenas DD/MM, inferir o ano da data do quadro.
+5. **Baixa confiança**: campo ilegível ou ambíguo → usar valor null e incluir o campo no array \`campos_baixa_confianca\`. **Não inventar dado pra preencher.** Um campo null e sinalizado é sempre melhor que um palpite plausível: quem lê o quadro depois consegue conferir o null, mas não desconfia do palpite.
+6. **Nomes**: gravar exatamente como aparecem (iniciais "F.J.A." ou nome completo). Se o quadro traz INICIAIS, **NÃO inferir nem completar o nome** a partir delas — transcrever as iniciais como estão. O sistema abrevia no display.
+7. **Datas**: formato ISO "YYYY-MM-DD". Se apenas DD/MM, inferir o ano da data do quadro. Célula em branco ou "À Definir" → null, **sem** sinalizar em campos_baixa_confianca (é estado válido do quadro, não ilegibilidade).
 8. **Perfil sala de alta**: "SIM"/"sim"/"S"/"s"/checkmark = true; "NÃO"/"N"/"n"/vazio = false; ilegível = null.
 9. **Pendências**: transcrever texto literal. Abreviações comuns: "AIH cad/CC" = Aguarda AIH para Centro Cirúrgico; "BC ortop" = Banco de Cirurgia Ortopedia; "ATB" = Antibiótico; "Aguarda Cultura" = Aguarda resultado de cultura; "Doppler" = Exame Doppler; "Endoscopia" = Exame de endoscopia.
 
@@ -81,7 +81,7 @@ OUTPUT:
 {
   "setor_sigla": "CT",
   "setor_nome": "Clínica do Trauma",
-  "data_kanban": "2026-06-26",
+  "data_kanban": "2026-06-16",
   "confianca_setor": 0.97,
   "leitos_inativos": ["401"],
   "leitos_vazios": ["402"],
@@ -189,6 +189,10 @@ async function handler(req, res) {
     const anthropicPayload = {
       model: ANTHROPIC_MODEL,
       max_tokens: 4096,
+      // Transcricao e tarefa deterministica: queremos o que esta escrito no quadro, nao uma
+      // variacao criativa dele. Sem isto, o default da API deixa espaco pra alucinacao em
+      // campo ilegivel -- justamente onde a foto de quadro manuscrito mais erra.
+      temperature: 0,
       system: [
         {
           type: 'text',
