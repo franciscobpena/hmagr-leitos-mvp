@@ -13863,17 +13863,70 @@ Faça apenas as perguntas necessárias.`;
    programa, embutidos como imagem (lib/kaizen-a3-exemplos.js). Servem de referencia
    pra quem vai preencher o proprio A3 — pedido do Maestro. Se o asset nao carregar,
    o PPT sai sem eles em vez de quebrar. */
+
+/* [13/07] Indice logo apos a capa. O Maestro pediu depois de ver o deck: sem indice, e
+   com os exemplos na frente, quem abre acha que o material e so exemplo. O indice diz o
+   que tem dentro e em que ordem — e os exemplos viram ANEXO, no fim. */
+function _a3SlideIndice(pptx, projetos, raias) {
+  const s = pptx.addSlide();
+  s.background = { color: 'FFFFFF' };
+  const M = _A3.M;
+
+  s.addText('Índice', { x: M + 0.2, y: 0.5, w: _A3.W - M * 2, h: 0.7,
+    fontFace: 'Calibri', fontSize: 30, bold: true, color: _A3C.navy });
+
+  const linhas = [];
+  linhas.push({ n: '', t: 'Guia: prompt para o assistente de IA apoiar no desenvolvimento dos Kaizens', dim: false });
+  linhas.push({ n: '', t: 'Como preencher os A3 deste material', dim: false });
+
+  const emOrdem = [];
+  (raias || []).forEach(function (r) {
+    projetos.filter(function (p) { return p.raia === r.id; })
+      .sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); })
+      .forEach(function (p) { emOrdem.push(p); });
+  });
+  projetos.filter(function (p) {
+    return !(raias || []).some(function (r) { return r.id === p.raia; });
+  }).forEach(function (p) { emOrdem.push(p); });
+
+  emOrdem.forEach(function (p, i) {
+    linhas.push({ n: String(i + 1) + '.', t: p.nome, dim: false });
+  });
+  linhas.push({ n: '', t: 'Anexo: exemplos de A3 já preenchidos (outros hospitais)', dim: true });
+
+  const col1 = linhas.slice(0, Math.ceil(linhas.length / 2));
+  const col2 = linhas.slice(Math.ceil(linhas.length / 2));
+  const colW = (_A3.W - M * 2 - 0.6) / 2;
+
+  function desenhaCol(itens, x) {
+    let y = 1.5;
+    itens.forEach(function (l) {
+      s.addText((l.n ? l.n + '  ' : '•  ') + l.t, {
+        x: x, y: y, w: colW, h: 0.42, fontFace: 'Calibri', fontSize: 13,
+        color: l.dim ? _A3C.guide : '1E293B', bold: !l.n && !l.dim, valign: 'top' });
+      y += 0.46;
+    });
+  }
+  desenhaCol(col1, M + 0.2);
+  desenhaCol(col2, M + 0.2 + colW + 0.6);
+
+  s.addText(String(emOrdem.length) + ' projeto' + (emOrdem.length === 1 ? '' : 's') +
+    ' Kaizen em andamento. Os exemplos ficam no fim, como anexo.', {
+    x: M + 0.2, y: _A3.H - 0.9, w: _A3.W - M * 2, h: 0.4,
+    fontFace: 'Calibri', fontSize: 11, color: _A3C.guide });
+}
+
 function _a3SlidesExemplos(pptx) {
   const exs = window._A3_EXEMPLOS;
   if (!Array.isArray(exs) || !exs.length) return;
 
   const cap = pptx.addSlide();
   cap.background = { color: _A3C.navy };
-  cap.addText('Exemplos de A3 já preenchidos', {
+  cap.addText('ANEXO — Exemplos de A3 já preenchidos', {
     x: 1, y: 4.2, w: _A3.W - 2, h: 0.9, fontFace: 'Calibri', fontSize: 34, bold: true,
     color: 'FFFFFF', align: 'center' });
-  cap.addText('A3 reais de outros hospitais do programa. Use como referência para preencher o seu — ' +
-    'os slides do seu hospital vêm logo depois.', {
+  cap.addText('A3 reais de outros hospitais do programa, para consulta. ' +
+    'Os projetos do seu hospital são os slides anteriores.', {
     x: 1.6, y: 5.2, w: _A3.W - 3.2, h: 0.8, fontFace: 'Calibri', fontSize: 15,
     color: 'C9D6E2', align: 'center' });
 
@@ -14021,10 +14074,10 @@ async function exportarA3PPTX() {
     if (window._A3_LOGOS_B64) { const lw = _A3.W - 2, lh = lw / 21.6; capa.addImage({ data: window._A3_LOGOS_B64, x: 1, y: _A3.H - lh - 0.6, w: lw, h: lh }); }
 
     // Página 2: convite a continuar o A3 com o Professor Kaizen (GPT)
+    _a3SlideIndice(pptx, projetos, raias);   // [13/07] índice logo após a capa
     _a3SlideProfessor(pptx);
     // Página 3: guia de preenchimento (deletável) — panorama auto vs campo + mapa A–I
     _a3SlideGuiaPreenchimento(pptx);
-    _a3SlidesExemplos(pptx);   // [13/07] exemplos ANTES dos A3 do hospital
 
     // 1 slide por projeto, agrupado por raia na ordem do relatório
     for (const raia of raias) {
@@ -14033,6 +14086,8 @@ async function exportarA3PPTX() {
     }
     // projetos sem raia conhecida (fallback)
     projetos.filter(p => !raias.some(r => r.id === p.raia)).forEach(p => _a3Slide(pptx, p, hoje, hospitalNome));
+
+    _a3SlidesExemplos(pptx);   // [13/07] ANEXO: exemplos no FIM, depois dos A3 do hospital
 
     const slug = _a3Slug(hospitalNome);
     const d = hoje;
