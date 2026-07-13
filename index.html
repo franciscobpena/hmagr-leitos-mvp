@@ -6679,6 +6679,9 @@ body.is-edit-focus [data-edit-focus] {
 }
 
 </style>
+<script src="/lib/kaizen-a3-logos.js" defer></script>
+<script src="/lib/kaizen-a3-professor.js" defer></script>
+<script src="/lib/kaizen-a3-exemplos.js" defer></script>
 </head>
 <body>
 
@@ -13794,7 +13797,9 @@ function _a3Slide(pptx, p, hoje, hospitalNome) {
 }
 
 const _A3_PROF_GPT = 'https://chatgpt.com/g/g-6985f82af5608191a8b757c64e4ee894-professor-kaizen';
-const _A3_KZ_URL = 'https://hob-leitos.vercel.app/#/kaizens';
+const _A3_KZ_URL = (typeof location !== 'undefined' && location.origin)
+  ? location.origin + '/#/kaizens'   // [13/07] era hardcoded no HOB (origem do porte)
+  : 'https://hob-leitos.vercel.app/#/kaizens';
 const _A3_PROF_PROMPT = `Você será meu facilitador de Projeto A3 Lean em ambiente hospitalar.
 
 Quero construir um projeto A3 passo a passo, de forma interativa, usando como referência o seguinte exemplo:
@@ -13853,6 +13858,44 @@ Comece pela etapa A – Histórico e Contexto.
 Faça apenas as perguntas necessárias.`;
 
 /** Página 2 (após capa): convite a continuar o A3 com o GPT Professor Kaizen — estética LUZ da marca. */
+
+/* [13/07] Slides de EXEMPLO no comeco do PPT: A3 reais de outros hospitais do
+   programa, embutidos como imagem (lib/kaizen-a3-exemplos.js). Servem de referencia
+   pra quem vai preencher o proprio A3 — pedido do Maestro. Se o asset nao carregar,
+   o PPT sai sem eles em vez de quebrar. */
+function _a3SlidesExemplos(pptx) {
+  const exs = window._A3_EXEMPLOS;
+  if (!Array.isArray(exs) || !exs.length) return;
+
+  const cap = pptx.addSlide();
+  cap.background = { color: _A3C.navy };
+  cap.addText('Exemplos de A3 já preenchidos', {
+    x: 1, y: 4.2, w: _A3.W - 2, h: 0.9, fontFace: 'Calibri', fontSize: 34, bold: true,
+    color: 'FFFFFF', align: 'center' });
+  cap.addText('A3 reais de outros hospitais do programa. Use como referência para preencher o seu — ' +
+    'os slides do seu hospital vêm logo depois.', {
+    x: 1.6, y: 5.2, w: _A3.W - 3.2, h: 0.8, fontFace: 'Calibri', fontSize: 15,
+    color: 'C9D6E2', align: 'center' });
+
+  exs.forEach(function (ex) {
+    (ex.imgs || []).forEach(function (img, i) {
+      const s = pptx.addSlide();
+      s.background = { color: 'FFFFFF' };
+      const rot = 'EXEMPLO · ' + ex.titulo + ' (' + ex.org + ')' +
+        (ex.imgs.length > 1 ? '  ·  ' + (i + 1) + '/' + ex.imgs.length : '');
+      s.addText(rot, { x: _A3.M, y: 0.16, w: _A3.W - _A3.M * 2, h: 0.34,
+        fontFace: 'Calibri', fontSize: 12, bold: true, color: _A3C.label });
+      // A imagem original é 13.33x7.5 (16:9). Encaixa na largura util mantendo proporcao.
+      const w = _A3.W - _A3.M * 2;
+      const h = w * 7.5 / 13.33;
+      // o exemplo e 16:9 e a folha A3 e mais alta: centraliza no espaco que sobra
+      // (abaixo do rotulo), senao fica uma faixa branca grande no pe do slide.
+      const y = 0.56 + (_A3.H - 0.56 - h) / 2;
+      s.addImage({ data: img, x: _A3.M, y: y, w: w, h: h });
+    });
+  });
+}
+
 function _a3SlideProfessor(pptx) {
   const s = pptx.addSlide();
   const M = _A3.M;
@@ -13877,7 +13920,7 @@ function _a3SlideProfessor(pptx) {
   const py = by + bh + 0.6;
   s.addShape(pptx.ShapeType.roundRect, { x: imgX, y: py, w: bw, h: bh, rectRadius: 0.1, fill: { color: panel }, line: { color: teal, width: 1.25 } });
   s.addText('▸  Consultar os projetos online na plataforma', { x: imgX, y: py, w: bw, h: bh, fontFace: 'Calibri', fontSize: 15, bold: true, color: teal, align: 'center', valign: 'middle', hyperlink: { url: _A3_KZ_URL, tooltip: 'Abrir os projetos Kaizen na plataforma' } });
-  s.addText('hob-leitos.vercel.app/#/kaizens', { x: imgX, y: py + bh + 0.14, w: bw, h: 0.3, fontFace: 'Calibri', fontSize: 10, color: dim, align: 'center', hyperlink: { url: _A3_KZ_URL } });
+  s.addText(((typeof location !== 'undefined' && location.host) ? location.host : 'hob-leitos.vercel.app') + '/#/kaizens', { x: imgX, y: py + bh + 0.14, w: bw, h: 0.3, fontFace: 'Calibri', fontSize: 10, color: dim, align: 'center', hyperlink: { url: _A3_KZ_URL } });
 
   // --- Direita: prompt copiável ---
   const px = imgX + imgW + 0.5, pw = _A3.W - M - px;
@@ -13981,6 +14024,7 @@ async function exportarA3PPTX() {
     _a3SlideProfessor(pptx);
     // Página 3: guia de preenchimento (deletável) — panorama auto vs campo + mapa A–I
     _a3SlideGuiaPreenchimento(pptx);
+    _a3SlidesExemplos(pptx);   // [13/07] exemplos ANTES dos A3 do hospital
 
     // 1 slide por projeto, agrupado por raia na ordem do relatório
     for (const raia of raias) {
