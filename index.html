@@ -13520,6 +13520,487 @@ function _excelKaizenAderencia(XLSX, indicadores, projetos) {
 }
 
 /** [Fase 60] Orquestra geração do Excel Kaizen 3 abas + download. */
+
+/* ── [porte HOB→este app, 13/07] helpers que o Export A3 usa ──
+   Vieram do modulo do PDF Kaizen do HOB, que este app nao tem. Só o mínimo:
+   paleta de status, formatador de data e ordenacao de acoes. */
+const _kzPdf = {
+  status: {
+    concluido:             [34, 197, 94],
+    em_andamento:          [59, 130, 246],
+    risco_atraso:          [245, 158, 11],
+    em_atraso:             [239, 68, 68],
+    estacionamento_ideias: [148, 163, 184],
+    cancelada:             [148, 163, 184]
+  }
+};
+
+/** Formata 'YYYY-MM-DD' (ou Date) em dd/mm/aaaa pt-BR. Vazio → '—'. */
+function _kzPdfData(v) {
+  if (!v) return '—';
+  const d = (v instanceof Date) ? v : new Date(v + (String(v).length === 10 ? 'T00:00:00' : ''));
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+const STATUS_ORDER_KAIZEN = {
+  em_atraso: 0, risco_atraso: 1, em_andamento: 2,
+  concluido: 3, estacionamento_ideias: 4, cancelada: 5
+};
+function _sortAcoesKaizen(acoes) {
+  return [...(acoes || [])].sort((a, b) => {
+    const oa = STATUS_ORDER_KAIZEN[a.status] ?? 9;
+    const ob = STATUS_ORDER_KAIZEN[b.status] ?? 9;
+    if (oa !== ob) return oa - ob;
+    return (a.ordem || 0) - (b.ordem || 0);
+  });
+}
+
+/* ============================================================
+   Export A3 PPTX Kaizen — 1 slide A3 DMAIC por projeto (SDD v1.2)
+   Reusa PptxGenJS 3.12.0 (boot) + helpers de dominio + _kzPdf.status.
+   A3 esqueleto: auto-preenche cabecalho/meta/5W2H/aderencia; problema,
+   medicao, causas e controle saem em branco cinza com perguntas-guia.
+   ============================================================ */
+const _A3 = { W: 16.54, H: 11.69, M: 0.3 };  // A3 paisagem em polegadas
+const _A3C = { label: '004E6C', navy: '1E293B', teal: '0D9488', amber: 'B45309', red: 'B91C1C',
+  guide: '64748B', boxLine: 'D6DEE8', metaBg: 'F0F9F7', sealBg: 'E8F3F1', white: 'FFFFFF', headBg: 'F5F8FB' };
+const _A3_GUIA = {
+  problema: '[Qual o gap observável hoje? Descreva sem causa e sem solução.]',
+  meta: '[Defina a meta SMART: o quê, quanto, até quando, como será medido.]',
+  medicao: '[Que dado mostra o tamanho do problema? Sugestões: SIPOC do processo, gráfico antes/depois, indicador de base.]',
+  causa: 'Liste as causas por categoria. Pergunte "por que?" até a causa-raiz.',
+  resultados: '[Qual indicador comprova o ganho frente à meta? Compare antes e depois.]',
+  controle: '[O que monitorar? Quem? Com que frequência? Onde fica o padrão?]',
+};
+function _a3HospitalNome(id) {
+  const m = { HMSA: 'Hospital Estadual Sílvio Avidos', HOB: 'Hospital Municipal Odilon Behrens',
+    HJXXIII: 'Hospital João XXIII', HMAGR: 'Hospital Municipal Abelardo Gadelha da Rocha' };
+  return m[id] || ('Hospital ' + (id || ''));
+}
+function _a3MetaIncompleta(txt) { return /xx/i.test(String(txt || '')); }
+function _a3Slug(s) {
+  return String(s || 'hospital').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+// rótulo de bloco (acima da moldura), cor do template
+function _a3Label(slide, x, y, w, txt) {
+  slide.addText(txt, { x, y, w, h: 0.32, fontFace: 'Calibri', fontSize: 12, bold: true, color: _A3C.label, valign: 'bottom' });
+}
+// moldura + título de bloco juntos
+function _a3Box(slide, pptx, r, fill) {
+  slide.addShape(pptx.ShapeType.rect, { x: r.x, y: r.y, w: r.w, h: r.h, fill: { color: fill || _A3C.white }, line: { color: _A3C.boxLine, width: 1 } });
+}
+function _a3Guia(slide, r, txt, pad) {
+  pad = pad == null ? 0.14 : pad;
+  slide.addText(txt, { x: r.x + pad, y: r.y + pad, w: r.w - 2 * pad, h: r.h - 2 * pad, fontFace: 'Calibri', fontSize: 11, italic: true, color: _A3C.guide, valign: 'top' });
+}
+// selo/pílula colorido
+function _a3Selo(slide, pptx, x, y, w, txt, bg, fg) {
+  slide.addShape(pptx.ShapeType.roundRect, { x, y, w, h: 0.42, rectRadius: 0.08, fill: { color: bg }, line: { type: 'none' } });
+  slide.addText(txt, { x, y, w, h: 0.42, fontFace: 'Calibri', fontSize: 11, bold: true, color: fg, align: 'center', valign: 'middle' });
+}
+// esqueleto Ishikawa (apenas espinha + 6 categorias; cabeça = problema/placeholder)
+function _a3Ishikawa(slide, pptx, r, cabecaTxt) {
+  const cy = r.y + r.h * 0.50;
+  const headW = 2.0, headH = 1.0;
+  const spineL = r.x + 0.3, spineR = r.x + r.w - headW - 0.25;
+  // espinha (grossa)
+  slide.addShape(pptx.ShapeType.line, { x: spineL, y: cy, w: spineR - spineL, h: 0, line: { color: _A3C.navy, width: 2.25 } });
+  // cabeça do peixe (= problema)
+  slide.addShape(pptx.ShapeType.rect, { x: r.x + r.w - headW - 0.05, y: cy - headH / 2, w: headW, h: headH, fill: { color: _A3C.metaBg }, line: { color: _A3C.teal, width: 1.25 } });
+  slide.addText([{ text: 'PROBLEMA\n', options: { bold: true, fontSize: 7.5, color: _A3C.teal } }, { text: cabecaTxt, options: { italic: true, fontSize: 8, color: _A3C.guide } }],
+    { x: r.x + r.w - headW, y: cy - headH / 2, w: headW - 0.1, h: headH, fontFace: 'Calibri', align: 'center', valign: 'middle' });
+  // 6 espinhas diagonais (3 acima, 3 abaixo) com rótulo da categoria + dica "[causa…]" de onde digitar
+  const topCats = ['Método', 'Máquina', 'Mão de obra'];
+  const botCats = ['Material', 'Medição', 'Meio ambiente'];
+  const usable = spineR - spineL, boneDX = 0.85, boneDY = r.h * 0.30;
+  const fracs = [0.30, 0.55, 0.80];
+  for (let i = 0; i < 3; i++) {
+    const sxp = spineL + usable * fracs[i];
+    slide.addShape(pptx.ShapeType.line, { x: sxp - boneDX, y: cy - boneDY, w: boneDX, h: boneDY, line: { color: _A3C.teal, width: 1.25 } });
+    slide.addText([{ text: topCats[i] + '\n', options: { bold: true, fontSize: 8.5, color: _A3C.label } }, { text: '[causa…]', options: { italic: true, fontSize: 7, color: _A3C.guide } }],
+      { x: sxp - boneDX - 0.65, y: cy - boneDY - 0.46, w: 1.45, h: 0.44, fontFace: 'Calibri', align: 'center', valign: 'bottom' });
+    slide.addShape(pptx.ShapeType.line, { x: sxp - boneDX, y: cy, w: boneDX, h: boneDY, flipV: true, line: { color: _A3C.teal, width: 1.25 } });
+    slide.addText([{ text: botCats[i] + '\n', options: { bold: true, fontSize: 8.5, color: _A3C.label } }, { text: '[causa…]', options: { italic: true, fontSize: 7, color: _A3C.guide } }],
+      { x: sxp - boneDX - 0.65, y: cy + boneDY + 0.02, w: 1.45, h: 0.44, fontFace: 'Calibri', align: 'center', valign: 'top' });
+  }
+  slide.addText('Liste as causas por categoria · pergunte "por quê?" até a raiz · separe Fato / Hipótese / Opinião', { x: r.x + 0.18, y: r.y + r.h - 0.3, w: r.w - 0.36, h: 0.26, fontFace: 'Calibri', fontSize: 8, italic: true, color: _A3C.guide, valign: 'bottom' });
+}
+
+function _a3Slide(pptx, p, hoje, hospitalNome) {
+  const slide = pptx.addSlide();
+  const M = _A3.M, colGap = 0.3, LG = 0.34, G = 0.16;
+  const colW = (_A3.W - M * 2 - colGap) / 2;
+  const lx = M, rx = M + colW + colGap;
+
+  const acoes = (typeof _sortAcoesKaizen === 'function')
+    ? _sortAcoesKaizen(p.acoes)
+    : (p.acoes || []).slice().sort((a, b) => (a.ordem || 999) - (b.ordem || 999));
+  const eixoNome = (typeof MOCK_PROJETOS !== 'undefined' && MOCK_PROJETOS.raias)
+    ? ((MOCK_PROJETOS.raias.find(rr => rr.id === p.raia) || {}).nome || p.raia || '—') : (p.raia || '—');
+  const lider = (p.responsavel && String(p.responsavel).trim()) ? p.responsavel : 'A definir';
+  const time = [...new Set(acoes.map(a => a.responsavel).filter(x => x && String(x).trim()))].join(', ') || '—';
+  const statusProj = (typeof statusProjetoAgregado === 'function') ? statusProjetoAgregado(p) : null;
+  const statusTxt = statusProj ? (typeof statusLabel === 'function' ? statusLabel(statusProj) : statusProj) : '—';
+  const ad = (typeof calcularAderencia === 'function') ? calcularAderencia([p], hoje) : { pct: 0, total: 0 };
+  const metaDef = p.meta_smart && String(p.meta_smart).trim() && !/não definida/i.test(p.meta_smart);
+
+  // ===== Cabeçalho (Título | Time | Última atualização) =====
+  const hY = M, hH = 0.78, gap = 0.16, updW = 2.4, timeW = 3.5;
+  const titW = _A3.W - M * 2 - updW - timeW - gap * 2;
+  const tit = { x: lx, y: hY, w: titW, h: hH };
+  _a3Box(slide, pptx, tit, _A3C.headBg);
+  slide.addText([{ text: 'Título:  ', options: { bold: true, color: _A3C.label } }, { text: p.nome || 'Projeto sem nome', options: { bold: true, color: _A3C.navy } }],
+    { x: tit.x + 0.14, y: tit.y, w: tit.w - 0.28, h: hH, fontFace: 'Calibri', fontSize: 14, valign: 'middle' });
+  const timeBox = { x: lx + titW + gap, y: hY, w: timeW, h: hH };
+  _a3Box(slide, pptx, timeBox, _A3C.headBg);
+  slide.addText([{ text: 'Time: ', options: { bold: true, color: _A3C.label } }, { text: time, options: { color: _A3C.navy } }],
+    { x: timeBox.x + 0.12, y: timeBox.y, w: timeBox.w - 0.24, h: hH, fontFace: 'Calibri', fontSize: 10, valign: 'middle' });
+  const updBox = { x: lx + titW + timeW + gap * 2, y: hY, w: updW, h: hH };
+  _a3Box(slide, pptx, updBox, _A3C.headBg);
+  slide.addText([{ text: 'Última atualização\n', options: { bold: true, color: _A3C.label, fontSize: 9 } }, { text: hoje.toLocaleDateString('pt-BR'), options: { color: _A3C.navy, fontSize: 12, bold: true } }],
+    { x: updBox.x + 0.1, y: updBox.y, w: updBox.w - 0.2, h: hH, fontFace: 'Calibri', align: 'center', valign: 'middle' });
+
+  // ===== Selos =====
+  let sx = lx; const sY = hY + hH + 0.14;
+  const semAcoes = !acoes.length;
+  const estac = /estacionamento/i.test(String(statusProj || ''));
+  const selo = (w, t, bg, fg) => { _a3Selo(slide, pptx, sx, sY, w, t, bg, fg); sx += w + 0.14; };
+  selo(2.0, 'Eixo: ' + eixoNome, _A3C.teal, _A3C.white);
+  if (estac) selo(2.5, 'Estacionamento de Ideias', 'EDE9FE', '5B21B6');
+  if (semAcoes) selo(1.5, 'A3 a iniciar', 'FEF3C7', '92400E');
+  if (_a3MetaIncompleta(p.meta_smart)) selo(1.8, 'Meta incompleta', 'FEF3C7', '92400E');
+  selo(2.0, 'Líder: ' + (lider.length > 14 ? lider.slice(0, 13) + '…' : lider), _A3C.sealBg, _A3C.navy);
+
+  // ===== Corpo (grade alinhada topo+base, sem overlap) =====
+  const bodyTop = sY + 0.42 + 0.28;
+  const footH = 0.95;
+  const bodyH = _A3.H - bodyTop - footH;
+  // esquerda: Define + Medição
+  const lInner = bodyH - 2 * LG - G;
+  const defH = lInner * 0.42, medH = lInner - defH;
+  const defR = { x: lx, y: bodyTop + LG, w: colW, h: defH };
+  _a3Label(slide, lx, bodyTop, colW, 'Problema e Meta · o que queremos resolver  —  etapa A-C');
+  _a3Box(slide, pptx, defR);
+  // Problema: usa p.descricao_problema quando existe (A3 pronto); senão andaime guiado
+  const probDef = p.descricao_problema && String(p.descricao_problema).trim();
+  slide.addText(probDef
+    ? [{ text: 'Problema  ', options: { bold: true, color: _A3C.label } }, { text: '(etapa B)\n', options: { fontSize: 8, color: _A3C.guide } }, { text: String(p.descricao_problema).trim(), options: { color: _A3C.navy } }]
+    : [
+      { text: 'Problema ', options: { bold: true, color: _A3C.label } }, { text: '(etapa B)\n', options: { fontSize: 8, color: _A3C.guide } },
+      { text: '•  Situação observada: ', options: { color: _A3C.navy } }, { text: '[___]\n', options: { italic: true, color: _A3C.guide } },
+      { text: '•  Gap mensurável: ', options: { color: _A3C.navy } }, { text: '[de ___ para ___]\n', options: { italic: true, color: _A3C.guide } },
+      { text: '•  Impacto no paciente: ', options: { color: _A3C.navy } }, { text: '[___]', options: { italic: true, color: _A3C.guide } },
+    ], { x: defR.x + 0.16, y: defR.y + 0.14, w: defR.w - 0.32, h: defR.h * 0.44, fontFace: 'Calibri', fontSize: 10.5, valign: 'top', lineSpacingMultiple: 1.1 });
+  const metaY = defR.y + defR.h * 0.48, metaBoxH = defR.h * 0.48;
+  slide.addShape(pptx.ShapeType.rect, { x: defR.x + 0.1, y: metaY, w: defR.w - 0.2, h: metaBoxH, fill: { color: _A3C.metaBg }, line: { color: _A3C.teal, width: 0.75 } });
+  slide.addText([{ text: 'META SMART\n', options: { bold: true, color: _A3C.teal, fontSize: 9 } },
+    metaDef ? { text: String(p.meta_smart).trim(), options: { color: _A3C.navy } } : { text: '[Reduzir (indicador) de (atual) para (alvo) até (data) — como será medido]', options: { italic: true, color: _A3C.guide } }],
+    { x: defR.x + 0.24, y: metaY + 0.08, w: defR.w - 0.48, h: metaBoxH - 0.16, fontFace: 'Calibri', fontSize: 10.5, valign: 'top' });
+
+  const medR = { x: lx, y: defR.y + defH + G + LG, w: colW, h: medH };
+  _a3Label(slide, lx, medR.y - LG, colW, 'Estado Atual · tamanho do problema, com dado  —  etapa D');
+  _a3Box(slide, pptx, medR);
+  const izH = Math.min(medR.h * 0.62, 2.4);
+  slide.addShape(pptx.ShapeType.rect, { x: medR.x + 0.2, y: medR.y + 0.2, w: medR.w - 0.4, h: izH, fill: { color: 'F4F7FA' }, line: { color: _A3C.teal, width: 1, dashType: 'dash' } });
+  slide.addText([{ text: 'GRÁFICO / FOTO DO GEMBA\n', options: { bold: true, fontSize: 12, color: _A3C.teal } }, { text: 'selecione esta caixa → Inserir > Imagem → redimensione', options: { fontSize: 9.5, color: _A3C.guide } }],
+    { x: medR.x + 0.2, y: medR.y + 0.2, w: medR.w - 0.4, h: izH, fontFace: 'Calibri', align: 'center', valign: 'middle' });
+  slide.addText([{ text: 'ou digite o dado de base.  ', options: { color: _A3C.navy } }, { text: 'Ex.: ocupação 98%, meta 85%.', options: { italic: true, color: _A3C.guide } }],
+    { x: medR.x + 0.2, y: medR.y + izH + 0.3, w: medR.w - 0.4, h: medR.h - izH - 0.5, fontFace: 'Calibri', fontSize: 10, valign: 'top' });
+
+  // direita: Causas + Plano + (Resultados | Controle)
+  const rInner = bodyH - 3 * LG - 2 * G;
+  const causH = rInner * 0.36, planH = rInner * 0.36, botH = rInner - causH - planH;
+  const causR = { x: rx, y: bodyTop + LG, w: colW, h: causH };
+  _a3Label(slide, rx, bodyTop, colW, 'Análise das Causas · por que o problema acontece?  —  etapa E');
+  _a3Box(slide, pptx, causR);
+  const cabecaTxt = probDef ? String(p.descricao_problema).trim() : '[Descreva o problema: gap observável, sem causa nem solução]';
+  if (p.causas_raiz && String(p.causas_raiz).trim()) {
+    // causas levantadas (v1 texto, 1 por linha) — lista limpa; fishbone estruturado = v2
+    const causas = String(p.causas_raiz).trim().split(/\r?\n+/).map(s => s.replace(/^[-•\s]+/, '').trim()).filter(Boolean);
+    slide.addText([{ text: 'Problema:  ', options: { bold: true, color: _A3C.label } }, { text: cabecaTxt, options: { italic: true, color: _A3C.guide } }],
+      { x: causR.x + 0.18, y: causR.y + 0.14, w: causR.w - 0.36, h: 0.5, fontFace: 'Calibri', fontSize: 9.5, valign: 'top' });
+    slide.addText(causas.map(c => ({ text: c, options: {} })),
+      { x: causR.x + 0.22, y: causR.y + 0.66, w: causR.w - 0.44, h: causR.h - 0.8, fontFace: 'Calibri', fontSize: 10.5, color: _A3C.navy, valign: 'top', bullet: { code: '2022' }, lineSpacingMultiple: 1.15 });
+  } else {
+    _a3Ishikawa(slide, pptx, causR, cabecaTxt);
+  }
+
+  const planR = { x: rx, y: causR.y + causH + G + LG, w: colW, h: planH };
+  _a3Label(slide, rx, planR.y - LG, colW, 'Plano de Ação · quem faz o quê, até quando (5W2H)  —  etapa F-G');
+  const hdr = { bold: true, color: _A3C.white, fill: _A3C.navy, fontFace: 'Calibri', fontSize: 8.5, valign: 'middle', align: 'center' };
+  const cell = { fontFace: 'Calibri', fontSize: 8.5, color: _A3C.navy, valign: 'middle' };
+  const rows = [[
+    { text: '#', options: hdr }, { text: 'O quê (ação)', options: { ...hdr, align: 'left' } }, { text: 'Causa (Por quê)', options: hdr },
+    { text: 'Quem', options: hdr }, { text: 'Quando', options: hdr }, { text: 'Status', options: hdr },
+  ]];
+  const MAXR = 8;
+  if (acoes.length) {
+    acoes.slice(0, MAXR).forEach((a, i) => {
+      const st = (typeof _statusEfetivoAcao === 'function') ? _statusEfetivoAcao(a, hoje) : a.status;
+      const stL = (typeof statusLabel === 'function') ? statusLabel(st) : st;
+      const prog = (a.progresso_pct != null) ? ' (' + a.progresso_pct + '%)' : '';
+      const c = (_kzPdf.status && _kzPdf.status[st]) ? _kzPdf.status[st].map(n => n.toString(16).padStart(2, '0')).join('') : _A3C.navy;
+      rows.push([
+        { text: String(i + 1), options: { ...cell, align: 'center' } },
+        { text: a.descricao || '—', options: cell },
+        { text: '', options: cell },
+        { text: (a.responsavel && String(a.responsavel).trim()) ? a.responsavel : '—', options: cell },
+        { text: _kzPdfData(a.prazo), options: { ...cell, align: 'center' } },
+        { text: stL + prog, options: { ...cell, color: c, bold: true, align: 'center' } },
+      ]);
+    });
+    if (acoes.length > MAXR) rows.push([{ text: '', options: cell }, { text: '+ ' + (acoes.length - MAXR) + ' ações (lista completa no sistema)', options: { ...cell, italic: true, color: _A3C.guide, colspan: 5 } }]);
+  } else {
+    rows.push([{ text: '', options: cell }, { text: '[preencher 1ª ação]', options: { ...cell, italic: true, color: _A3C.guide, colspan: 5 } }]);
+  }
+  const rowH = Math.max(0.2, Math.min(0.34, (planH - 0.04) / rows.length));
+  slide.addTable(rows, { x: planR.x, y: planR.y, w: colW, rowH, colW: [0.35, colW - 4.85, 1.3, 1.1, 0.9, 1.2], border: { type: 'solid', color: _A3C.boxLine, pt: 0.5 }, autoPage: false, valign: 'middle' });
+
+  const botY = planR.y + planH + G + LG, halfW = (colW - 0.3) / 2;
+  const resR = { x: rx, y: botY, w: halfW, h: botH };
+  _a3Label(slide, rx, botY - LG, halfW, 'Resultados · ganho frente à meta  —  etapa H');
+  _a3Box(slide, pptx, resR);
+  _a3Selo(slide, pptx, resR.x + 0.16, resR.y + 0.16, Math.min(2.0, resR.w - 0.32), ad.total ? ad.pct + '% de aderência' : 'sem aderência', _A3C.sealBg, _A3C.navy);
+  slide.addText('Status: ' + statusTxt, { x: resR.x + 0.16, y: resR.y + 0.66, w: resR.w - 0.32, h: 0.28, fontFace: 'Calibri', fontSize: 10, bold: true, color: _A3C.navy });
+  slide.addShape(pptx.ShapeType.rect, { x: resR.x + 0.16, y: resR.y + 1.0, w: resR.w - 0.32, h: resR.h - 1.16, fill: { color: 'F4F7FA' }, line: { color: _A3C.teal, width: 1, dashType: 'dash' } });
+  slide.addText('Gráfico antes/depois (cole aqui)', { x: resR.x + 0.16, y: resR.y + 1.0, w: resR.w - 0.32, h: resR.h - 1.16, fontFace: 'Calibri', fontSize: 9, italic: true, color: _A3C.guide, align: 'center', valign: 'middle' });
+
+  const ctrR = { x: rx + halfW + 0.3, y: botY, w: halfW, h: botH };
+  _a3Label(slide, ctrR.x, botY - LG, halfW, 'Controle · como sustentar o ganho  —  etapa I');
+  _a3Box(slide, pptx, ctrR);
+  if (p.metodo_controle && String(p.metodo_controle).trim()) {
+    slide.addText(String(p.metodo_controle).trim(), { x: ctrR.x + 0.16, y: ctrR.y + 0.16, w: ctrR.w - 0.32, h: ctrR.h - 0.32, fontFace: 'Calibri', fontSize: 10, color: _A3C.navy, valign: 'top', lineSpacingMultiple: 1.15 });
+  } else {
+    const ctW = ctrR.w - 0.28;
+    const ctrlRows = [
+      [{ text: 'O que monitorar', options: { ...hdr, align: 'left', fontSize: 8 } }, { text: 'Quem · Frequência', options: { ...hdr, align: 'left', fontSize: 8 } }],
+      [{ text: '', options: cell }, { text: '', options: cell }],
+      [{ text: '', options: cell }, { text: '', options: cell }],
+    ];
+    slide.addTable(ctrlRows, { x: ctrR.x + 0.14, y: ctrR.y + 0.16, w: ctW, rowH: Math.min(0.36, (ctrR.h - 0.55) / 3), colW: [ctW * 0.56, ctW * 0.44], border: { type: 'solid', color: _A3C.boxLine, pt: 0.5 }, autoPage: false, valign: 'middle' });
+    slide.addText('e onde fica o padrão (POP/checklist)?', { x: ctrR.x + 0.14, y: ctrR.y + ctrR.h - 0.3, w: ctW, h: 0.26, fontFace: 'Calibri', fontSize: 8, italic: true, color: _A3C.guide, valign: 'bottom' });
+  }
+
+  // ===== Rodapé: logos + hospital =====
+  if (window._A3_LOGOS_B64) {
+    const lw = _A3.W - M * 2, lh = lw / 21.6;
+    slide.addImage({ data: window._A3_LOGOS_B64, x: M, y: _A3.H - lh - 0.1, w: lw, h: lh });
+  }
+  slide.addText(hospitalNome, { x: M, y: _A3.H - 0.32, w: 6, h: 0.24, fontFace: 'Calibri', fontSize: 8, color: _A3C.guide, valign: 'bottom' });
+  // coaching detalhado nas NOTAS (invisível na apresentação)
+  if (typeof slide.addNotes === 'function') slide.addNotes(_a3Notes());
+}
+
+const _A3_PROF_GPT = 'https://chatgpt.com/g/g-6985f82af5608191a8b757c64e4ee894-professor-kaizen';
+const _A3_KZ_URL = 'https://hob-leitos.vercel.app/#/kaizens';
+const _A3_PROF_PROMPT = `Você será meu facilitador de Projeto A3 Lean em ambiente hospitalar.
+
+Quero construir um projeto A3 passo a passo, de forma interativa, usando como referência o seguinte exemplo:
+
+TÍTULO:
+Reestruturação e Otimização do Huddle Diário para Agilizar Tomada de Decisão e Desempenho Assistencial
+
+PROBLEMA:
+Embora o huddle já ocorra, não há clareza sobre a área líder responsável pela condução, nem existe um roteiro estruturado de gestão à vista que permita visualizar gargalos e priorizar ações.
+
+META:
+Aumentar a agilidade e resolutividade das pendências do PS e melhorar a efetividade da comunicação.
+
+AÇÕES IMPLEMENTADAS NO EXEMPLO:
+- Criação de grupo de WhatsApp para participantes
+- Implantação de quadro de gestão à vista atualizado
+- QR Code para registro de presença
+- Estruturação do rito multidisciplinar
+- Apoio ao giro de leitos
+
+Sua função NÃO é preencher o A3 sozinho.
+
+Sua função é:
+
+1. Me conduzir etapa por etapa.
+2. Fazer apenas as perguntas necessárias para a fase atual.
+3. Nunca avançar para a próxima fase sem validar a anterior.
+4. Sempre mostrar:
+   - O que estamos preenchendo
+   - Um exemplo baseado no projeto do Huddle
+   - O que a líder do projeto fez
+   - Como adaptar para minha realidade
+5. Ao final de cada fase, mostrar uma versão consolidada do A3.
+6. Utilizar a estrutura:
+
+   A. Histórico / Contexto
+   B. Problema Atual
+   C. Meta SMART
+   D. Situação Atual (Medição)
+   E. Análise de Causa
+   F. Contramedidas
+   G. Plano 5W2H
+   H. Resultados Esperados
+   I. Controle e Sustentação
+
+7. Sempre sugerir pilotos de 48 horas antes de mudanças definitivas.
+8. Sempre diferenciar:
+   - Fato
+   - Hipótese
+   - Opinião
+
+9. Quando eu não souber responder alguma pergunta, me ajude a descobrir no Gemba.
+
+Comece pela etapa A – Histórico e Contexto.
+
+Faça apenas as perguntas necessárias.`;
+
+/** Página 2 (após capa): convite a continuar o A3 com o GPT Professor Kaizen — estética LUZ da marca. */
+function _a3SlideProfessor(pptx) {
+  const s = pptx.addSlide();
+  const M = _A3.M;
+  s.background = { color: '05111A' };
+  const cream = 'EEE8DC', teal = '34C9B6', amber = 'FFB442', dim = '9FB0AD', panel = '0B1C26', panelLn = '24424A';
+  s.addText('Continue seu A3 com o Professor Kaizen', { x: M, y: 0.5, w: _A3.W - M * 2, h: 0.7, fontFace: 'Calibri', fontSize: 30, bold: true, color: cream });
+  s.addText('Um facilitador de IA com o método Lean A3 do Francisco — conduz você etapa por etapa, valida cada fase e sugere pilotos de 48h.', { x: M, y: 1.22, w: _A3.W - M * 2, h: 0.5, fontFace: 'Calibri', fontSize: 14, color: dim });
+
+  // --- Esquerda: retrato + botão-link ---
+  const imgW = 6.6, imgH = window._A3_PROF_WH ? imgW * window._A3_PROF_WH[1] / window._A3_PROF_WH[0] : imgW * 0.557;
+  const imgX = M, imgY = 2.1;
+  if (window._A3_PROF_B64) {
+    s.addShape(pptx.ShapeType.rect, { x: imgX - 0.05, y: imgY - 0.05, w: imgW + 0.1, h: imgH + 0.1, fill: { color: panel }, line: { color: teal, width: 1 } });
+    s.addImage({ data: window._A3_PROF_B64, x: imgX, y: imgY, w: imgW, h: imgH });
+  }
+  const by = imgY + imgH + 0.45, bw = imgW, bh = 0.72;
+  s.addShape(pptx.ShapeType.roundRect, { x: imgX, y: by, w: bw, h: bh, rectRadius: 0.1, fill: { color: amber }, line: { type: 'none' } });
+  s.addText('▶  Abrir o Professor Kaizen', { x: imgX, y: by, w: bw, h: bh, fontFace: 'Calibri', fontSize: 16, bold: true, color: '05111A', align: 'center', valign: 'middle', hyperlink: { url: _A3_PROF_GPT, tooltip: 'Abrir o GPT Professor Kaizen' } });
+  s.addText('chatgpt.com → Professor Kaizen (GPT)', { x: imgX, y: by + bh + 0.14, w: bw, h: 0.3, fontFace: 'Calibri', fontSize: 10, color: dim, align: 'center', hyperlink: { url: _A3_PROF_GPT } });
+
+  // CTA secundário: consultar os projetos Kaizen online na plataforma
+  const py = by + bh + 0.6;
+  s.addShape(pptx.ShapeType.roundRect, { x: imgX, y: py, w: bw, h: bh, rectRadius: 0.1, fill: { color: panel }, line: { color: teal, width: 1.25 } });
+  s.addText('▸  Consultar os projetos online na plataforma', { x: imgX, y: py, w: bw, h: bh, fontFace: 'Calibri', fontSize: 15, bold: true, color: teal, align: 'center', valign: 'middle', hyperlink: { url: _A3_KZ_URL, tooltip: 'Abrir os projetos Kaizen na plataforma' } });
+  s.addText('hob-leitos.vercel.app/#/kaizens', { x: imgX, y: py + bh + 0.14, w: bw, h: 0.3, fontFace: 'Calibri', fontSize: 10, color: dim, align: 'center', hyperlink: { url: _A3_KZ_URL } });
+
+  // --- Direita: prompt copiável ---
+  const px = imgX + imgW + 0.5, pw = _A3.W - M - px;
+  s.addText('Copie este prompt e cole no chat', { x: px, y: imgY - 0.4, w: pw, h: 0.32, fontFace: 'Calibri', fontSize: 13, bold: true, color: teal });
+  const boxY = imgY, boxH = _A3.H - boxY - 0.7;
+  s.addShape(pptx.ShapeType.rect, { x: px, y: boxY, w: pw, h: boxH, fill: { color: panel }, line: { color: panelLn, width: 1 } });
+  s.addText(_A3_PROF_PROMPT, { x: px + 0.22, y: boxY + 0.16, w: pw - 0.44, h: boxH - 0.32, fontFace: 'Consolas', fontSize: 9.5, color: cream, valign: 'top', lineSpacingMultiple: 1.02 });
+
+  // --- Rodapé: logos sobre faixa clara ---
+  if (window._A3_LOGOS_B64) {
+    const lw = _A3.W - M * 2, lh = lw / 21.6;
+    s.addShape(pptx.ShapeType.rect, { x: 0, y: _A3.H - lh - 0.22, w: _A3.W, h: lh + 0.32, fill: { color: 'FFFFFF' }, line: { type: 'none' } });
+    s.addImage({ data: window._A3_LOGOS_B64, x: M, y: _A3.H - lh - 0.06, w: lw, h: lh });
+  }
+}
+
+/** Notas de relator (coaching por bloco) — invisíveis na apresentação, resolve o "texto-guia vira lixo". */
+function _a3Notes() {
+  return [
+    'COMO PREENCHER ESTE A3  (estas notas não aparecem na apresentação/impressão)',
+    '',
+    'Já vem pronto pelo sistema: Cabeçalho, Meta SMART, Plano de Ação 5W2H e Resultados/aderência.',
+    'Os blocos em cinza são seu trabalho de campo. Apague os textos cinza ao preencher. Peça ajuda ao Professor Kaizen (slide "Continue seu A3...") na etapa indicada.',
+    '',
+    'PROBLEMA (etapa B) — o gap observável hoje, sem causa e sem solução. Formato: situação observada + gap mensurável + impacto no paciente.',
+    '   Ex. (Huddle): "O huddle já ocorre, mas sem área líder nem roteiro de gestão à vista; gargalos não ficam visíveis e ações não são priorizadas."',
+    '',
+    'ESTADO ATUAL / MEDIÇÃO (etapa D) — o tamanho do problema, com dado. Cole 1 evidência: gráfico de tendência, SIPOC, foto do quadro/Gemba, ou o dado de base.',
+    '   Inserir imagem no PowerPoint: selecione a caixa cinza tracejada > aba Inserir > Imagem > redimensione para a caixa.',
+    '',
+    'ANÁLISE DAS CAUSAS (etapa E) — por que o problema acontece. Liste causas por categoria na espinha (Método, Máquina, Mão de obra, Material, Medição, Meio ambiente). Pergunte "por quê?" até a raiz.',
+    '   Separe sempre: Fato (verificável) · Hipótese (a testar) · Opinião.',
+    '',
+    'CONTROLE (etapa I) — como sustentar o ganho: o que monitorar, quem, com que frequência e onde fica o padrão.',
+    '',
+    'Regras do método (Professor Kaizen): valide cada fase antes de avançar; pilote 48h antes de tornar definitivo; quando não souber responder, descubra no Gemba (vá ver onde o trabalho acontece).',
+  ].join('\n');
+}
+
+/** Slide-guia global (após o Professor): panorama do que é automático vs campo + mapa A–I. Deletável. */
+function _a3SlideGuiaPreenchimento(pptx) {
+  const s = pptx.addSlide();
+  const M = _A3.M;
+  s.addText('Como preencher os A3 deste material', { x: M, y: 0.5, w: _A3.W - M * 2, h: 0.6, fontFace: 'Calibri', fontSize: 28, bold: true, color: _A3C.navy });
+  s.addText('Os próximos slides são um A3 por projeto. Os blocos em cinza são seu trabalho de campo — há dicas detalhadas nas NOTAS de cada slide. Apague ESTE slide antes de apresentar.', { x: M, y: 1.16, w: _A3.W - M * 2, h: 0.5, fontFace: 'Calibri', fontSize: 13, color: _A3C.guide });
+  const colW = (_A3.W - M * 2 - 0.4) / 2, lx = M, rx = M + colW + 0.4, top = 2.6, ph = 4.2;
+  // Já vem pronto
+  s.addShape(pptx.ShapeType.rect, { x: lx, y: top, w: colW, h: ph, fill: { color: _A3C.metaBg }, line: { color: _A3C.teal, width: 1 } });
+  s.addText('✓  Já vem pronto (sistema)', { x: lx + 0.2, y: top + 0.18, w: colW - 0.4, h: 0.4, fontFace: 'Calibri', fontSize: 15, bold: true, color: _A3C.teal });
+  s.addText([
+    { text: 'Cabeçalho', options: { bold: true } }, { text: ' — título, time, eixo, líder, data.\n' },
+    { text: 'Meta SMART', options: { bold: true } }, { text: ' — quando definida no projeto.\n' },
+    { text: 'Plano de Ação 5W2H', options: { bold: true } }, { text: ' — ações com responsável, prazo e status.\n' },
+    { text: 'Resultados', options: { bold: true } }, { text: ' — % de aderência e status do projeto.' },
+  ], { x: lx + 0.2, y: top + 0.7, w: colW - 0.4, h: ph - 0.9, fontFace: 'Calibri', fontSize: 12, color: _A3C.navy, valign: 'top', lineSpacingMultiple: 1.3 });
+  // Você preenche
+  s.addShape(pptx.ShapeType.rect, { x: rx, y: top, w: colW, h: ph, fill: { color: 'FFFFFF' }, line: { color: _A3C.boxLine, width: 1 } });
+  s.addText('✎  Você preenche (campo / Gemba)', { x: rx + 0.2, y: top + 0.18, w: colW - 0.4, h: 0.4, fontFace: 'Calibri', fontSize: 15, bold: true, color: _A3C.navy });
+  s.addText([
+    { text: 'Problema (etapa B)', options: { bold: true, color: _A3C.label } }, { text: ' — situação + gap mensurável + impacto. Texto.\n' },
+    { text: 'Estado Atual / Medição (etapa D)', options: { bold: true, color: _A3C.label } }, { text: ' — gráfico, SIPOC, foto do Gemba ou dado de base. Imagem ou número.\n' },
+    { text: 'Análise das Causas (etapa E)', options: { bold: true, color: _A3C.label } }, { text: ' — causas por categoria na espinha de peixe. Texto.\n' },
+    { text: 'Controle (etapa I)', options: { bold: true, color: _A3C.label } }, { text: ' — o que monitorar, quem, com que frequência. Tabela.\n\n' },
+    { text: 'Dica: ', options: { bold: true, color: _A3C.teal } }, { text: 'abra o Professor Kaizen (slide anterior) e peça ajuda etapa por etapa.', options: { italic: true } },
+  ], { x: rx + 0.2, y: top + 0.7, w: colW - 0.4, h: ph - 0.9, fontFace: 'Calibri', fontSize: 12, color: _A3C.navy, valign: 'top', lineSpacingMultiple: 1.3 });
+  if (window._A3_LOGOS_B64) { const lw = _A3.W - M * 2, lh = lw / 21.6; s.addImage({ data: window._A3_LOGOS_B64, x: M, y: _A3.H - lh - 0.1, w: lw, h: lh }); }
+}
+
+async function exportarA3PPTX() {
+  if (typeof PptxGenJS === 'undefined') { showToast('Biblioteca de PPTX não carregou — tente de novo', 'error'); return; }
+  const todos = (typeof getAllProjetosComOverrides === 'function') ? getAllProjetosComOverrides() : [];
+  const projetos = todos.filter(p => !(typeof _isProjetoArquivado === 'function' && _isProjetoArquivado(p)));
+  if (!projetos.length) { showToast('Nenhum projeto para exportar', 'warning'); return; }
+  showToast('Gerando A3 (PPTX) dos projetos Kaizen...', 'info');
+  try {
+    const hoje = new Date();
+    const hospId = (typeof HOSPITAL_ID !== 'undefined') ? HOSPITAL_ID : 'HMSA';
+    const hospitalNome = _a3HospitalNome(hospId);
+    const raias = (typeof MOCK_PROJETOS !== 'undefined' && MOCK_PROJETOS.raias)
+      ? MOCK_PROJETOS.raias.slice().sort((a, b) => (a.ordem || 0) - (b.ordem || 0)) : [];
+    const totAcoes = projetos.reduce((s, p) => s + (p.acoes ? p.acoes.length : 0), 0);
+    const adG = (typeof calcularAderencia === 'function') ? calcularAderencia(projetos, hoje) : { pct: 0, total: 0 };
+
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'A3', width: _A3.W, height: _A3.H });
+    pptx.layout = 'A3';
+    pptx.author = hospId + ' — Gestão de Leitos';
+    pptx.company = hospitalNome;
+
+    // Capa
+    const capa = pptx.addSlide();
+    capa.background = { color: _A3C.navy };
+    capa.addText('Projetos Kaizen — A3 DMAIC', { x: 1, y: 3.6, w: _A3.W - 2, h: 1, fontFace: 'Calibri', fontSize: 40, bold: true, color: _A3C.white, align: 'center' });
+    capa.addText(hospitalNome, { x: 1, y: 4.8, w: _A3.W - 2, h: 0.6, fontFace: 'Calibri', fontSize: 20, color: 'CBD5E1', align: 'center' });
+    capa.addText(`${projetos.length} projeto${projetos.length === 1 ? '' : 's'}  ·  ${totAcoes} ${totAcoes === 1 ? 'ação' : 'ações'}` + (adG.total ? `  ·  ${adG.pct}% de aderência` : ''),
+      { x: 1, y: 5.5, w: _A3.W - 2, h: 0.5, fontFace: 'Calibri', fontSize: 16, color: _A3C.white, align: 'center' });
+    capa.addText('Emitido em ' + hoje.toLocaleDateString('pt-BR'), { x: 1, y: 6.1, w: _A3.W - 2, h: 0.4, fontFace: 'Calibri', fontSize: 12, color: 'CBD5E1', align: 'center' });
+    if (window._A3_LOGOS_B64) { const lw = _A3.W - 2, lh = lw / 21.6; capa.addImage({ data: window._A3_LOGOS_B64, x: 1, y: _A3.H - lh - 0.6, w: lw, h: lh }); }
+
+    // Página 2: convite a continuar o A3 com o Professor Kaizen (GPT)
+    _a3SlideProfessor(pptx);
+    // Página 3: guia de preenchimento (deletável) — panorama auto vs campo + mapa A–I
+    _a3SlideGuiaPreenchimento(pptx);
+
+    // 1 slide por projeto, agrupado por raia na ordem do relatório
+    for (const raia of raias) {
+      projetos.filter(p => p.raia === raia.id).sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+        .forEach(p => _a3Slide(pptx, p, hoje, hospitalNome));
+    }
+    // projetos sem raia conhecida (fallback)
+    projetos.filter(p => !raias.some(r => r.id === p.raia)).forEach(p => _a3Slide(pptx, p, hoje, hospitalNome));
+
+    const slug = _a3Slug(hospitalNome);
+    const d = hoje;
+    const dataStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    await pptx.writeFile({ fileName: `Projetos-Kaizen-A3-${slug}-${dataStr}.pptx` });
+    showToast('A3 (PPTX) exportado.', 'success');
+  } catch (err) {
+    console.error('[A3 PPTX] erro:', err);
+    showToast('Erro ao gerar A3: ' + (err.message || err), 'error');
+  }
+}
+
 async function exportarExcelKaizen() {
   showToast('Gerando Excel Kaizen...', 'info');
   try {
@@ -24034,6 +24515,12 @@ function renderKaizenMatriz() {
       'title="Baixar matriz de projetos Kaizen + ações + aderência em Excel">' +
       '<i data-lucide="download" aria-hidden="true"></i>' +
       '<span>Exportar Excel</span>' +
+      '</button>' +
+      '<button class="btn btn-ghost" onclick="exportarA3PPTX()" ' +
+      'style="font-size:11px;padding:6px 12px;display:inline-flex;align-items:center;gap:6px" ' +
+      'title="Baixar A3 DMAIC (PPTX): 1 slide A3 por projeto, com cabeçalho, meta e plano de ação preenchidos">' +
+      '<i data-lucide="presentation" aria-hidden="true"></i>' +
+      '<span>Exportar A3 (PPTX)</span>' +
       '</button>';
     if (arquivadosCount > 0) {
       const toggleLabel = _mostrarArquivados ? 'Ocultar arquivados' : 'Mostrar arquivados (' + arquivadosCount + ')';
