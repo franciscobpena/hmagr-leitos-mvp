@@ -1911,6 +1911,23 @@ footer {
 
 /* Container da view */
 #view-kaizens { display: none; }
+
+/* Exemplos de A3 — referência no topo da visão Kaizen */
+#kz-exemplos-a3 { margin-bottom: 18px; }
+.kz-exemplos-a3-ajuda { font-size: 12.5px; color: var(--textMuted); margin: 4px 0 10px; }
+.kz-exemplos-a3-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.kz-exemplo-a3 {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface, transparent); color: inherit; text-decoration: none;
+  transition: border-color .12s ease, transform .12s ease;
+}
+.kz-exemplo-a3:hover { border-color: var(--accent, #0B6E99); transform: translateY(-1px); }
+.kz-exemplo-a3:focus-visible { outline: 2px solid var(--accent, #0B6E99); outline-offset: 2px; }
+.kz-exemplo-a3 i { width: 18px; height: 18px; color: var(--textMuted); }
+.kz-exemplo-a3-nome { font-size: 13px; font-weight: 600; line-height: 1.35; }
+.kz-exemplo-a3-org { font-size: 11px; color: var(--textMuted); }
+
 #view-kaizens main { padding: 16px; max-width: 1400px; margin: 0 auto; }
 
 /* ─── PAINEL DE ADERÊNCIA (topo) ─── */
@@ -7876,6 +7893,34 @@ body.is-edit-focus [data-edit-focus] {
 ═══════════════════════════════════════════════════════════ -->
 <div id="view-kaizens">
   <main>
+
+    <!-- EXEMPLOS DE A3 (referência) -->
+    <section id="kz-exemplos-a3">
+      <div class="sec-title">Exemplos de A3 — como um projeto Kaizen fica pronto</div>
+      <p class="kz-exemplos-a3-ajuda">A3 reais de outros hospitais do programa, para servir de referência antes de preencher o seu. Clique para baixar.</p>
+      <div class="kz-exemplos-a3-grid">
+        <a class="kz-exemplo-a3" href="exemplos-a3/a3-huddle-hmn.pptx" download title="Baixar o A3 de exemplo: Reestruturação e Otimização do Huddle (HMN) — PowerPoint">
+          <i data-lucide="presentation" aria-hidden="true"></i>
+          <span class="kz-exemplo-a3-nome">Reestruturação e Otimização do Huddle</span>
+          <span class="kz-exemplo-a3-org">HMN · PPTX</span>
+        </a>
+        <a class="kz-exemplo-a3" href="exemplos-a3/a3-altas-ate-10h-ps-hsa.pptx" download title="Baixar o A3 de exemplo: Alta até as 10h no Pronto-Socorro (HSA) — PowerPoint">
+          <i data-lucide="presentation" aria-hidden="true"></i>
+          <span class="kz-exemplo-a3-nome">Alta até as 10h no Pronto-Socorro</span>
+          <span class="kz-exemplo-a3-org">HSA · PPTX</span>
+        </a>
+        <a class="kz-exemplo-a3" href="exemplos-a3/a3-fluxo-de-alta-pediatrico-hmn.pptx" download title="Baixar o A3 de exemplo: Padronização do Fluxo de Alta (Pediátrico) (HMN) — PowerPoint">
+          <i data-lucide="presentation" aria-hidden="true"></i>
+          <span class="kz-exemplo-a3-nome">Padronização do Fluxo de Alta (Pediátrico)</span>
+          <span class="kz-exemplo-a3-org">HMN · PPTX</span>
+        </a>
+        <a class="kz-exemplo-a3" href="exemplos-a3/a3-exames-laboratoriais-ps-hmn.pptx" download title="Baixar o A3 de exemplo: Redução do Tempo de Liberação dos Exames do PS (HMN) — PowerPoint">
+          <i data-lucide="presentation" aria-hidden="true"></i>
+          <span class="kz-exemplo-a3-nome">Redução do Tempo de Liberação dos Exames do PS</span>
+          <span class="kz-exemplo-a3-org">HMN · PPTX</span>
+        </a>
+      </div>
+    </section>
 
     <!-- TOPO: PAINEL DE ADERÊNCIA -->
     <section id="kz-aderencia-section">
