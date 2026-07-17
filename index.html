@@ -70,15 +70,16 @@
 // [Fase 8 WD-4] CDN scripts agora com `defer` — cdnFallback movido p/ DOMContentLoaded
 // pra rodar APÓS os defers terminarem de carregar/parsear (evita falsos positivos).
 document.addEventListener('DOMContentLoaded', function() {
-  function cdnFallback(check, url) {
+  function cdnFallback(check, url, onready) {
     if (!check()) {
       const s = document.createElement('script');
       s.src = url;
+      if (onready) s.onload = function () { try { onready(); } catch (e) {} };
       document.head.appendChild(s);
     }
   }
   cdnFallback(function() { return typeof html2canvas !== 'undefined'; }, 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
-  cdnFallback(function() { return typeof Chart !== 'undefined'; },       'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js');
+  cdnFallback(function() { return typeof Chart !== 'undefined'; },       'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js', function () { if (typeof renderVolumetria === 'function') renderVolumetria(); });
   cdnFallback(function() { return typeof PptxGenJS !== 'undefined'; },   'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js');
   // [Fase 56 P1] Fallback pra supabase-js e lucide (eram únicos sem fallback)
   cdnFallback(function() { return typeof supabase !== 'undefined'; },    'https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js');
