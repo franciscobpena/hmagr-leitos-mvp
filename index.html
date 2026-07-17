@@ -10987,7 +10987,8 @@ const MOCK_INDICADORES = {
     { label: 'FEV/26', iso: '2026-02-01' },
     { label: 'MAR/26', iso: '2026-03-01' },
     { label: 'ABR/26', iso: '2026-04-01' },
-    { label: 'MAI/26', iso: '2026-05-01' }
+    { label: 'MAI/26', iso: '2026-05-01' },
+    { label: 'JUN/26', iso: '2026-06-01' }
   ],
   itens: [
     {
@@ -10998,7 +10999,7 @@ const MOCK_INDICADORES = {
       polaridade: 'menor_melhor',
       meta: { descricao: 'Reduzir 20%', valor: 291, min: null, max: null },
       ddc: { valor: 364 },
-      medicoes: { '2026-01-01': 322, '2026-02-01': 320, '2026-03-01': 377, '2026-04-01': 320 },
+      medicoes: { '2026-01-01': 322.24, '2026-02-01': 319.96, '2026-03-01': 377.28, '2026-04-01': 346.88, '2026-05-01': 368.77, '2026-06-01': 308 },
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
@@ -11012,7 +11013,7 @@ const MOCK_INDICADORES = {
       polaridade: 'menor_melhor',
       meta: { descricao: 'Reduzir 15%', valor: 4893, min: null, max: null },
       ddc: { valor: 5756 },
-      medicoes: { '2026-01-01': 10236, '2026-02-01': 12964, '2026-03-01': 11583, '2026-04-01': 11246 },
+      medicoes: { '2026-01-01': 10236, '2026-02-01': 12964, '2026-03-01': 11583, '2026-04-01': 11246, '2026-05-01': 8412, '2026-06-01': 8635 },
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
@@ -11026,7 +11027,7 @@ const MOCK_INDICADORES = {
       polaridade: 'menor_melhor',
       meta: { descricao: 'Reduzir 10%', valor: 1089, min: null, max: null },
       ddc: { valor: 1210 },
-      medicoes: { '2026-01-01': 772, '2026-02-01': 515, '2026-03-01': 647, '2026-04-01': 707 },
+      medicoes: { '2026-01-01': 772, '2026-02-01': 515, '2026-03-01': 647, '2026-04-01': 707, '2026-05-01': 687, '2026-06-01': 691 },
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
@@ -11040,7 +11041,7 @@ const MOCK_INDICADORES = {
       polaridade: 'menor_melhor',
       meta: { descricao: 'Reduzir 10%', valor: 9.13, min: null, max: null },
       ddc: { valor: 10.1 },
-      medicoes: { '2026-01-01': 10.9, '2026-02-01': 9.9, '2026-03-01': 10.4, '2026-04-01': 8.84 },
+      medicoes: { '2026-01-01': 10.87, '2026-02-01': 9.86, '2026-03-01': 10.4, '2026-04-01': 8.84, '2026-05-01': 9.41, '2026-06-01': 9.4 },
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
@@ -11054,7 +11055,7 @@ const MOCK_INDICADORES = {
       polaridade: 'banda',
       meta: { descricao: '60% – 85%', valor: null, min: 60, max: 85 },
       ddc: { valor: 129.4 },
-      medicoes: { '2026-01-01': 163.1, '2026-02-01': 146.3, '2026-03-01': 162.5, '2026-04-01': 154.3 },
+      medicoes: { '2026-01-01': 163.15, '2026-02-01': 146.29, '2026-03-01': 162.52, '2026-04-01': 154.3, '2026-05-01': 152.59, '2026-06-01': 128.52 },
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
@@ -11068,7 +11069,7 @@ const MOCK_INDICADORES = {
       polaridade: 'menor_melhor',
       meta: { descricao: 'Reduzir 10%', valor: 213.3, min: null, max: null },
       ddc: { valor: 237 },
-      medicoes: { '2026-01-01': 237, '2026-02-01': 216, '2026-03-01': 188.4, '2026-04-01': 201.5 },
+      medicoes: { '2026-01-01': 237, '2026-02-01': 215.5, '2026-03-01': 188.4, '2026-04-01': 201.3, '2026-05-01': 109, '2026-06-01': 92 },
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
@@ -11082,7 +11083,7 @@ const MOCK_INDICADORES = {
       polaridade: 'maior_melhor',
       meta: { descricao: '≥ 8', valor: 8, min: null, max: null },
       ddc: { valor: 0 },
-      medicoes: { '2026-01-01': 0, '2026-02-01': 0, '2026-03-01': 0, '2026-04-01': 0 },
+      medicoes: { '2026-01-01': 0, '2026-02-01': 0, '2026-03-01': 0, '2026-04-01': 0, '2026-05-01': 0, '2026-06-01': 0 },
       responsavel: null,
       corresponsavel: null,
       confiabilidade: null,
@@ -11099,16 +11100,17 @@ const MOCK_VOLUMETRIA = {
     { label: 'FEV/26',       iso: '2026-02-01' },
     { label: 'MAR/26',       iso: '2026-03-01' },
     { label: 'ABR/26',       iso: '2026-04-01' },
-    { label: 'MAI/26',       iso: '2026-05-01' }
+    { label: 'MAI/26',       iso: '2026-05-01' },
+    { label: 'JUN/26',       iso: '2026-06-01' }
   ],
   itens: [
-    { id: 'vol_atend_urg',     ordem: 1, nome: 'Atendimentos Urgência',     unidade: 'vol/mês',   destaque_grafico: true,  medicoes: { '2025-12-01': null, '2026-01-01': 8857, '2026-02-01': 8805, '2026-03-01': 9435, '2026-04-01': 8685, '2026-05-01': 9230 } },
-    { id: 'vol_intern_diaria', ordem: 2, nome: 'Internações Diárias (média)', unidade: 'média/dia', destaque_grafico: false, medicoes: { '2025-12-01': 14.8, '2026-01-01': 16.5, '2026-02-01': 16.3, '2026-03-01': 17.19, '2026-04-01': 19.2, '2026-05-01': 18.81 } },
-    { id: 'vol_leitos_ps',     ordem: 3, nome: 'Leitos Operacionais PS',     unidade: 'leitos',    destaque_grafico: false, medicoes: { '2025-12-01': 116,  '2026-01-01': 110,  '2026-02-01': 110,  '2026-03-01': 110,  '2026-04-01': 110, '2026-05-01': 116 } },
-    { id: 'vol_dias_pcp',      ordem: 4, nome: 'Dias Ativação PCP',          unidade: 'dias',      destaque_grafico: false, medicoes: { '2025-12-01': 0,    '2026-01-01': null, '2026-02-01': 21,   '2026-03-01': null, '2026-04-01': null, '2026-05-01': null } },
-    { id: 'vol_obitos_24h',    ordem: 5, nome: 'Óbitos em até 24h',          unidade: 'qtd',       destaque_grafico: false, medicoes: { '2025-12-01': null, '2026-01-01': 10,   '2026-02-01': 8,    '2026-03-01': 9,    '2026-04-01': 5, '2026-05-01': 5 } },
-    { id: 'vol_porta_medico',  ordem: 6, nome: 'Tempo Porta-Médico (Min)',   unidade: 'min',       destaque_grafico: false, medicoes: { '2025-12-01': 93,   '2026-01-01': 41,   '2026-02-01': 49,   '2026-03-01': 59,   '2026-04-01': 58, '2026-05-01': 61 } },
-    { id: 'vol_giro_leitos',   ordem: 7, nome: 'Giro de Leitos',             unidade: 'giro',      destaque_grafico: false, medicoes: { '2025-12-01': 3.01, '2026-01-01': 3.67, '2026-02-01': 3.56, '2026-03-01': 2.5,  '2026-04-01': 3.7, '2026-05-01': 4.78 } }
+    { id: 'vol_atend_urg',     ordem: 1, nome: 'Atendimentos Urgência',     unidade: 'vol/mês',   destaque_grafico: true,  medicoes: { '2025-12-01': null, '2026-01-01': 8857, '2026-02-01': 8805, '2026-03-01': 9435, '2026-04-01': 8685, '2026-05-01': 9230, '2026-06-01': 9518 } },
+    { id: 'vol_intern_diaria', ordem: 2, nome: 'Internações Diárias (média)', unidade: 'média/dia', destaque_grafico: false, medicoes: { '2025-12-01': 14.8, '2026-01-01': 16.51, '2026-02-01': 16.32, '2026-03-01': 17.19, '2026-04-01': 19.2, '2026-05-01': 18.81, '2026-06-01': 15.86 } },
+    { id: 'vol_leitos_ps',     ordem: 3, nome: 'Leitos Operacionais PS',     unidade: 'leitos',    destaque_grafico: false, medicoes: { '2025-12-01': 116, '2026-01-01': 110, '2026-02-01': 110, '2026-03-01': 110, '2026-04-01': 110, '2026-05-01': 116, '2026-06-01': 116 } },
+    { id: 'vol_dias_pcp',      ordem: 4, nome: 'Dias Ativação PCP',          unidade: 'dias',      destaque_grafico: false, medicoes: { '2025-12-01': 0, '2026-01-01': null, '2026-02-01': 21, '2026-03-01': null, '2026-04-01': null, '2026-05-01': null, '2026-06-01': 19 } },
+    { id: 'vol_obitos_24h',    ordem: 5, nome: 'Óbitos em até 24h',          unidade: 'qtd',       destaque_grafico: false, medicoes: { '2025-12-01': null, '2026-01-01': 10, '2026-02-01': 8, '2026-03-01': 9, '2026-04-01': 5, '2026-05-01': 5, '2026-06-01': 8 } },
+    { id: 'vol_porta_medico',  ordem: 6, nome: 'Tempo Porta-Médico (Min)',   unidade: 'min',       destaque_grafico: false, medicoes: { '2025-12-01': 93, '2026-01-01': 41, '2026-02-01': 49, '2026-03-01': 59, '2026-04-01': 58, '2026-05-01': 61, '2026-06-01': 58 } },
+    { id: 'vol_giro_leitos',   ordem: 7, nome: 'Giro de Leitos',             unidade: 'giro',      destaque_grafico: false, medicoes: { '2025-12-01': 3.01, '2026-01-01': 3.67, '2026-02-01': 3.56, '2026-03-01': 2.5, '2026-04-01': 3.7, '2026-05-01': 4.78, '2026-06-01': 3.9 } }
   ]
 };
 
